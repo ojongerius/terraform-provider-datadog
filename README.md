@@ -1,3 +1,3 @@
 # terraform-provider-datadog
 
-A terraform plugin that provides read resources for Datadog.
+A terraform plugin that provides resources for Datadog.
