@@ -1,20 +1,30 @@
 package datadog
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"strconv"
 	"time"
 
-	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
+
+	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/helper/hashcode"
 )
+
+// Work around the nested struct in https://github.com/zorkian/go-datadog-api/blob/master/dashboards.go#L16
+type GraphDefintionRequests struct {
+	Query   string `json:"q"`
+	Stacked bool   `json:"stacked"`
+}
 
 func resourceDatadogGraph() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogGraphCreate,
 		Read:   resourceDatadogGraphRead,
 		Delete: resourceDatadogGraphDelete,
+		Update: resourceDatadogGraphUpdate,
 		//TODO: add Update
 
 		Schema: map[string]*schema.Schema{
@@ -40,6 +50,26 @@ func resourceDatadogGraph() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"request": &schema.Schema{
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"query": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"stacked": &schema.Schema{
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+					},
+
+				},
+				Set: resourceDatadogGraphHash,
+			},
+
 			// TODO: support events.
 		},
 	}
@@ -52,84 +82,7 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 
 	client := meta.(*datadog.Client)
 
-	// To create a dashboard we'll have to:
-	// * if it does not exist: what should we do here? The dashboard
-	//   resource should handle this AFAICS
-	// * if no associated dashboard exist: remove it/taint/remove from state
-	// * if the dashboard does exist, and the graph is there, NOOP.
-	// * if the dashboard does exist, and the graph is not there, create.
-	// * if the dashboard does exist, and the graph is different; we
-	//   can't see this, as graphs have no IDs in DD. It will be a delete
-	//   and create event.
-
-	// Here: the config has a (dynamically filled) dashboard ID, so
-	// we'll read the dashboard and see if:
-	// * diff the existing graph to see if it needs updating
-	//  OR
-	// * Create the graph
-
-	//DashId, conv_err := strconv.Atoi(d.Get("dashboard_id"))
-	//DashId, conv_err := strconv.Atoi(d.Get("dashboard_id"))
-
-	//if conv_err != nil {
-		//return conv_err
-	//}
-
-	// Shall we just get it ourselves?
-	//dashboard, err := resourceDatadogDashboardRetrieve(DashId, client, d)
-	/*
-	Trying to workaround:
-
-	--> darwin/amd64 error: exit status 2
-    	Stderr: # github.com/hashicorp/terraform/builtin/providers/datadog
-    	../terraform/builtin/providers/datadog/resource_datadog_graph.go:117: dashboard.Graphs undefined (type **datadog.Dashboard has no field or method Graphs)
-	 */
-	dashboard, err := client.GetDashboard(d.Get("dashboard_id").(int))
-
-	if err != nil {
-		return err
-	}
-
-	// Look in dashboard and see if our graph it is in there?
-	// This is fun; graphs do not have an ID, so it has be to a 100% match :(
-	// if we made it this far, we'll have to create the Graph, which means
-	// we have the privilege of updating the dashboard.
-
-	for _, r := range dashboard.Graphs {
-		// TODO: efficiently test if the are the same, can use a Set and hashing.
-		// for this POC we'll just match on title
-		// If it is there, but different, (re)create it.
-		if r.Title == d.Get("title") {
-			fmt.Println("Found matching title. Nothing to do here.")
-			return nil
-		}
-	}
-
-	// If we made it this far, we are going to:
-	// * Create the graph object
-	// * Update the dashboard with the graph
-
-	log.Printf("[DEBUG] dashboard before added graph: %#v", dashboard)
-
-	graph_definition := datadog.Graph{}.Definition
-
-
-	// Just create an empty struct and let the request resources handle creation of requests.
-	graph_requests := datadog.Graph{}.Definition.Requests
-
-	graph_definition.Viz = d.Get("viz").(string)
-	graph_definition.Requests = graph_requests
-	the_graph := datadog.Graph{Title: d.Get("title").(string), Definition: graph_definition}
-	dashboard.Graphs = append(dashboard.Graphs, the_graph) // Should be done for each
-
-	log.Printf("[DEBUG] dashboard after adding graph: %#v", dashboard)
-
-	// Update/commit
-	err = client.UpdateDashboard(dashboard)
-
-	if err != nil {
-		return err
-	}
+	resourceDatadogGraphUpdate(d, meta)
 
 	Id := int(time.Now().Unix())
 
@@ -137,7 +90,7 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 
 	log.Printf("[INFO] Dashboard ID: %s", Id)
 
-	_, err = resourceDatadogGraphRetrieve(d.Get("dashboard_id").(int), client, d)
+	_, err := resourceDatadogGraphRetrieve(d.Get("dashboard_id").(int), client, d)
 
 	if err != nil {
 		return err
@@ -182,6 +135,107 @@ func resourceDatadogGraphRetrieve(id int, client *datadog.Client, d *schema.Reso
 	}
 
 	return nil, nil // TODO: should return something meaningful
+}
+
+func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error {
+	client := meta.(*datadog.Client)
+
+	dashboard, err := client.GetDashboard(d.Get("dashboard_id").(int))
+
+	if err != nil {
+		return err
+	}
+
+	for _, r := range dashboard.Graphs {
+		// TODO: efficiently test if the are the same, use a Set and hashing?
+		if r.Title == d.Get("title") {
+			fmt.Println("Found matching title. Nothing to do here.")
+			return nil
+		}
+	}
+
+	log.Printf("[DEBUG] dashboard before added graph: %#v", dashboard)
+
+	graph_definition := datadog.Graph{}.Definition
+
+	graph_requests := datadog.Graph{}.Definition.Requests
+
+	graph_definition.Viz = d.Get("viz").(string)
+
+	log.Printf("[DEBUG] Checking if requests have changed.")
+
+	if d.HasChange("request") {
+		log.Printf("[DEBUG] Requests have changed.")
+		o, n := d.GetChange("request")
+		ors := o.(*schema.Set).Difference(n.(*schema.Set))
+		nrs := n.(*schema.Set).Difference(o.(*schema.Set))
+
+		// Now first loop through all the old routes and delete any obsolete ones
+		for _, request := range ors.List() {
+			m := request.(map[string]interface{})
+
+			// Delete the route as it no longer exists in the config
+			// TODO: implement
+			// Delete the query as it no longer exists in the config
+			log.Printf("[DEBUG] Deleting graph query %s", m["query"].(string))
+			log.Printf("[DEBUG] Deleting graph stacked %s", m["stacked"].(bool))
+
+			/*
+			_, err := conn.DeleteRoute(&ec2.DeleteRouteInput{
+				RouteTableID:         aws.String(d.Id()),
+				DestinationCIDRBlock: aws.String(m["cidr_block"].(string)),
+			})
+			if err != nil {
+				return err
+			}
+			*/
+		}
+		for _, request := range nrs.List() {
+			m := request.(map[string]interface{})
+
+			// Delete the route as it no longer exists in the config
+			log.Printf("[DEBUG] Adding graph query %s", m["query"].(string))
+			log.Printf("[DEBUG] Adding graph stacked %s", m["stacked"].(bool))
+			graph_requests = append(graph_requests, GraphDefintionRequests{Query: m["query"].(string),
+				Stacked: m["stacked"].(bool)})
+
+			/*
+			_, err := conn.DeleteRoute(&ec2.DeleteRouteInput{
+				RouteTableID:         aws.String(d.Id()),
+				DestinationCIDRBlock: aws.String(m["cidr_block"].(string)),
+			})
+			if err != nil {
+				return err
+			}
+			*/
+		}
+	}
+
+	/*
+	for _, query := range requests {
+		log.Printf("[DEBUG] query looks like: %#v", query)
+		graph_requests = append(graph_requests,
+		GraphDefintionRequests{Query: query,
+						   Stacked: d.Get("stacked").(bool)})
+	}
+	*/
+
+	graph_definition.Requests = graph_requests
+
+	the_graph := datadog.Graph{Title: d.Get("title").(string), Definition: graph_definition}
+
+	dashboard.Graphs = append(dashboard.Graphs, the_graph) // Should be done for each
+
+	log.Printf("[DEBUG] dashboard after adding graph: %#v", dashboard)
+
+	// Update/commit
+	err = client.UpdateDashboard(dashboard)
+
+	if err != nil {
+		return err
+	}
+
+	return resourceDatadogGraphRead(d, meta)
 }
 
 func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error {
@@ -237,4 +291,19 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	return nil
+}
+
+func resourceDatadogGraphHash(v interface{}) int{
+	var buf bytes.Buffer
+	m := v.(map[string]interface{})
+
+	if v, ok := m["query"];  ok {
+		buf.WriteString(fmt.Sprintf("%s-", v.(string)))
+	}
+
+	if v, ok := m["stacked"];  ok {
+		buf.WriteString(fmt.Sprintf("%s-", v.(bool)))
+	}
+
+	return hashcode.String(buf.String())
 }

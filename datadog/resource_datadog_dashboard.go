@@ -10,11 +10,6 @@ import (
 	"github.com/zorkian/go-datadog-api"
 )
 
-type GraphDefintionRequests struct {
-        Query   string `json:"q"`
-        Stacked bool   `json:"stacked"`
-}
-
 func resourceDatadogDashboard() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogDashboardCreate,
