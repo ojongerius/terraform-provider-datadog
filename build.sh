@@ -8,6 +8,11 @@ echo "Compiling for OS: $XC_OS and ARCH: $XC_ARCH"
 
 gox -os="${XC_OS}" -arch="${XC_ARCH}"
 
+if [ $? != 0 ] ; then
+    echo "Failed to compile, bailing."
+    exit 1
+fi
+
 echo "Looking for Terraform install"
 TERRAFORM_LOC=$(dirname $(which terraform))
 
