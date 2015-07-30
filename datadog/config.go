@@ -7,17 +7,15 @@ import (
 )
 
 type Config struct {
-	APIKey string
-	APPKey string
+	api_key string
+	app_key string
 }
 
 // Client() returns a new client for accessing datadog.
 //
 func (c *Config) Client() (*datadog.Client, error) {
 
-	// TODO: NewClient does not return err, if the library sucks we'll create our own.
-	//client, err := datadog.NewClient(c.APIKey, c.APPKey)
-	client := datadog.NewClient(c.APIKey, c.APPKey)
+	client := datadog.NewClient(c.api_key, c.app_key)
 
 	log.Printf("[INFO] Datadog Client configured ")
 

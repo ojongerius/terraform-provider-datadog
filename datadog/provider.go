@@ -13,12 +13,12 @@ func Provider() terraform.ResourceProvider {
 		Schema: map[string]*schema.Schema{
 			"api_key": &schema.Schema{
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("DATADOG_API_KEY", nil), // TODO: not fetched from env?
 			},
 			"app_key": &schema.Schema{
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("DATADOG_APP_KEY", nil),
 			},
 		},
@@ -37,8 +37,8 @@ func Provider() terraform.ResourceProvider {
 // TODO suck because client of lib only returns a client, no error
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
-		APIKey: d.Get("api_key").(string),
-		APPKey: d.Get("app_key").(string),
+		api_key: d.Get("api_key").(string),
+		app_key: d.Get("app_key").(string),
 	}
 
 	log.Println("[INFO] Initializing Datadog client")

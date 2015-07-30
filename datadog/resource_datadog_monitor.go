@@ -125,7 +125,9 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 		return fmt.Errorf("error creating warning: %s", c_err)
 	}
 
-	d.SetId(fmt.Sprintf("%s__%s", w, c))
+	log.Printf("[DEBUG] Saving IDs: %s__%s", strconv.Itoa(w.Id), strconv.Itoa(c.Id))
+
+	d.SetId(fmt.Sprintf("%s__%s", strconv.Itoa(w.Id), strconv.Itoa(c.Id)))
 
 	return nil
 }
