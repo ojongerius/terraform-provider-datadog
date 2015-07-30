@@ -27,7 +27,7 @@ func Provider() terraform.ResourceProvider {
 			// TODO this is where the other resources will be mapped
 			"datadog_dashboard": resourceDatadogDashboard(),
 			"datadog_graph": resourceDatadogGraph(),
-			//"datadog_request": resourceDatadogRequest(),
+			"datadog_monitor": resourceDatadogMonitor(),
 		},
 
 		ConfigureFunc: providerConfigure,

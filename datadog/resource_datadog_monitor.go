@@ -1,33 +1,23 @@
 package datadog
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/zorkian/go-datadog-api"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-const (
-	MONITOR_ENDPOINT = "https://app.datadoghq.com/api/v1/monitor"
-)
-
-var (
-	AUTH_SUFFIX = ""
-)
-
-func datadogMonitorResource() *schema.Resource {
+func resourceDatadogMonitor() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceMonitorCreate,
-		Read:   resourceMonitorRead,
-		Update: resourceMonitorUpdate,
-		Delete: resourceMonitorDelete,
-		Exists: resourceMonitorExists,
+		Create: resourceDatadogMonitorCreate,
+		Read:   resourceDatadogMonitorRead,
+		Update: resourceDatadogMonitorUpdate,
+		Delete: resourceDatadogMonitorDelete,
+		Exists: resourceDatadogMonitorExists,
 
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
@@ -90,26 +80,8 @@ func datadogMonitorResource() *schema.Resource {
 	}
 }
 
-func getIDFromResponse(h *http.Response) (string, error) {
-	body, err := ioutil.ReadAll(h.Body)
-	if err != nil {
-		return "", err
-	}
-	h.Body.Close()
-	log.Println(h)
-	log.Println(string(body))
-	v := map[string]interface{}{}
-	err = json.Unmarshal(body, &v)
-	if err != nil {
-		return "", err
-	}
-	if id, ok := v["id"]; ok {
-		return strconv.Itoa(int(id.(float64))), nil
-	}
-	return "", fmt.Errorf("error getting ID from response %s", h.Status)
-}
-
-func marshalMetric(d *schema.ResourceData, typeStr string) ([]byte, error) {
+// TODO: Rename this one?
+func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor {
 	name := d.Get("name").(string)
 	message := d.Get("message").(string)
 	timeAggr := d.Get("time_aggr").(string)
@@ -121,113 +93,141 @@ func marshalMetric(d *schema.ResourceData, typeStr string) ([]byte, error) {
 	query := fmt.Sprintf("%s(%s):%s:%s{%s} %s %s", timeAggr, timeWindow, spaceAggr, metric, tags, operator, d.Get(fmt.Sprintf("%s.threshold", typeStr)))
 
 	log.Println(query)
-	m := map[string]interface{}{
-		"type":    "metric alert",
-		"query":   query,
-		"name":    fmt.Sprintf("[%s] %s", typeStr, name),
-		"message": fmt.Sprintf("%s %s", message, d.Get(fmt.Sprintf("%s.notify", typeStr))),
-		"options": map[string]interface{}{
-			"notify_no_data":    d.Get("notify_no_data").(bool),
-			"no_data_timeframe": d.Get("no_data_timeframe").(int),
-		},
+
+	o := datadog.Options{
+		NotifyNoData: d.Get("notify_no_data").(bool),
+		NoDataTimeframe: d.Get("no_data_timeframe").(int),
 	}
-	return json.Marshal(m)
+
+	m := datadog.Monitor{
+		Type:    "metric alert",
+		Query:   query,
+		Name:    fmt.Sprintf("[%s] %s", typeStr, name),
+		Message: fmt.Sprintf("%s %s", message, d.Get(fmt.Sprintf("%s.notify", typeStr))),
+		Options: o,
+	}
+
+	return &m
 }
 
-func authSuffix(meta interface{}) string {
-	m := meta.(map[string]string)
-	return fmt.Sprintf("?api_key=%s&application_key=%s", m["api_key"], m["app_key"])
-}
+func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) error {
+	client := meta.(*datadog.Client)
 
-func resourceMonitorCreate(d *schema.ResourceData, meta interface{}) error {
-	warningBody, _ := marshalMetric(d, "warning")
-	criticalBody, _ := marshalMetric(d, "critical")
+	w, w_err := client.CreateMonitor(buildMonitorStruct(d, "warning"))
 
-	resW, err := http.Post(fmt.Sprintf("%s%s", MONITOR_ENDPOINT, authSuffix(meta)), "application/json", bytes.NewReader(warningBody))
-	if err != nil {
-		return fmt.Errorf("error creating warning: %s", err.Error())
+	if w_err != nil {
+		return fmt.Errorf("error creating warning: %s", w_err)
 	}
 
-	resC, err := http.Post(fmt.Sprintf("%s%s", MONITOR_ENDPOINT, authSuffix(meta)), "application/json", bytes.NewReader(criticalBody))
-	if err != nil {
-		return fmt.Errorf("error creating critical: %s", err.Error())
+	c, c_err := client.CreateMonitor(buildMonitorStruct(d, "critical"))
+
+	if c_err != nil {
+		return fmt.Errorf("error creating warning: %s", c_err)
 	}
 
-	warningMonitorID, err := getIDFromResponse(resW)
-	if err != nil {
-		return err
-	}
-	criticalMonitorID, err := getIDFromResponse(resC)
-	if err != nil {
-		return err
-	}
-
-	d.SetId(fmt.Sprintf("%s__%s", warningMonitorID, criticalMonitorID))
+	d.SetId(fmt.Sprintf("%s__%s", w, c))
 
 	return nil
 }
 
-func resourceMonitorDelete(d *schema.ResourceData, meta interface{}) (e error) {
+func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) error {
+	client := meta.(*datadog.Client)
+
 	for _, v := range strings.Split(d.Id(), "__") {
-		client := http.Client{}
-		req, _ := http.NewRequest("DELETE", fmt.Sprintf("%s/%s%s", MONITOR_ENDPOINT, v, authSuffix(meta)), nil)
-		_, err := client.Do(req)
-		e = err
+		if v == "" {
+			return fmt.Errorf("Id not set.")
+		}
+		Id, i_err := strconv.Atoi(v)
+
+		if i_err != nil {
+			return i_err
+		}
+
+		err := client.DeleteMonitor(Id)
+		if err != nil {
+			return err
+		}
 	}
-	return
+	return nil
 }
 
-func resourceMonitorExists(d *schema.ResourceData, meta interface{}) (b bool, e error) {
+func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b bool, e error) {
+	client := meta.(*datadog.Client)
+
 	b = true
 	for _, v := range strings.Split(d.Id(), "__") {
-		res, err := http.Get(fmt.Sprintf("%s/%s%s", MONITOR_ENDPOINT, v, authSuffix(meta)))
-		if err != nil {
-			e = err
-			continue
+		if v == "" {
+			return false, fmt.Errorf("Id not set.")
 		}
-		if res.StatusCode > 400 {
-			b = false
+		Id, i_err := strconv.Atoi(v)
+
+		if i_err != nil {
+			return false, i_err
+		}
+		_, err := client.GetMonitor(Id)
+		if err != nil {
+			// There is an error, we go on to the next
+			e = err
 			continue
 		}
 		b = b && true
 	}
 	if !b {
-		e = resourceMonitorDelete(d, meta)
+		return false, resourceDatadogMonitorDelete(d, meta)
 	}
-	return
+
+	return false, nil
 }
 
-func resourceMonitorRead(d *schema.ResourceData, meta interface{}) error {
+func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-func resourceMonitorUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) error {
 	split := strings.Split(d.Id(), "__")
-	warningID, criticalID := split[0], split[1]
 
-	warningBody, _ := marshalMetric(d, "warning")
-	criticalBody, _ := marshalMetric(d, "critical")
+	wID, cID := split[0], split[1]
 
-	client := http.Client{}
-
-	reqW, _ := http.NewRequest("PUT", fmt.Sprintf("%s/%s%s", MONITOR_ENDPOINT, warningID, authSuffix(meta)), bytes.NewReader(warningBody))
-	resW, err := client.Do(reqW)
-	if err != nil {
-		return fmt.Errorf("error updating warning: %s", err.Error())
-	}
-	resW.Body.Close()
-	if resW.StatusCode > 400 {
-		return fmt.Errorf("error updating warning monitor: %s", resW.Status)
+	if wID == "" {
+		return fmt.Errorf("Id not set.")
 	}
 
-	reqC, _ := http.NewRequest("PUT", fmt.Sprintf("%s/%s%s", MONITOR_ENDPOINT, criticalID, authSuffix(meta)), bytes.NewReader(criticalBody))
-	resC, err := client.Do(reqC)
-	if err != nil {
-		return fmt.Errorf("error updating critical: %s", err.Error())
+	if cID == "" {
+		return fmt.Errorf("Id not set.")
 	}
-	resW.Body.Close()
-	if resW.StatusCode > 400 {
-		return fmt.Errorf("error updating critical monitor: %s", resC.Status)
+
+	warningId, i_err := strconv.Atoi(wID)
+
+	if i_err != nil {
+		return i_err
 	}
+
+	criticalId, i_err := strconv.Atoi(cID)
+
+	if i_err != nil {
+		return i_err
+	}
+
+
+	client := meta.(*datadog.Client)
+
+	warning_body := buildMonitorStruct(d, "warning")
+	critical_body := buildMonitorStruct(d, "critical")
+
+	warning_body.Id = warningId
+	critical_body.Id = criticalId
+
+	w_err := client.UpdateMonitor(warning_body)
+
+	if w_err != nil {
+		return fmt.Errorf("error updating warning: %s", w_err.Error())
+	}
+
+	c_err := client.UpdateMonitor(critical_body)
+
+	if c_err != nil {
+		return fmt.Errorf("error updating critical: %s", c_err.Error())
+	}
+
 	return nil
 }
