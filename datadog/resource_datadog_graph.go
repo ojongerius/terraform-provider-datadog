@@ -67,7 +67,7 @@ func resourceDatadogGraph() *schema.Resource {
 					},
 
 				},
-				Set: resourceDatadogGraphHash,
+				Set: resourceDatadogRequestHash,
 			},
 
 			// TODO: support events.
@@ -80,8 +80,6 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 	// it's a virtual resource, a la "resource_vpn_connection_route"
 	// hence will need to do a bit of hacking to find out what dashboard.
 
-	client := meta.(*datadog.Client)
-
 	resourceDatadogGraphUpdate(d, meta)
 
 	Id := int(time.Now().Unix())
@@ -90,7 +88,7 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 
 	log.Printf("[INFO] Dashboard ID: %s", Id)
 
-	_, err := resourceDatadogGraphRetrieve(d.Get("dashboard_id").(int), client, d)
+	err := resourceDatadogGraphRetrieve(d, meta)
 
 	if err != nil {
 		return err
@@ -100,10 +98,7 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 }
 
 func resourceDatadogGraphRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*datadog.Client)
-
-	// TODO: Again, this conversion is annoying -the golang API returns and wants type Int, but Terraform uses String :|
-	_, err := resourceDatadogGraphRetrieve(d.Get("dashboard_id").(int), client, d)
+	err := resourceDatadogGraphRetrieve(d, meta)
 
 	if err != nil {
 		return err
@@ -112,29 +107,53 @@ func resourceDatadogGraphRead(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-func resourceDatadogGraphRetrieve(id int, client *datadog.Client, d *schema.ResourceData) (*datadog.Graph, error) {
+func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) error {
 	// Here we go, we'll need to go into the dash and find ourselves
-	dashboard, err := client.GetDashboard(id)
+	client := meta.(*datadog.Client)
+
+	dashboard, err := client.GetDashboard(d.Get("dashboard_id").(int))
 
 	if err != nil {
-		return nil, fmt.Errorf("Error retrieving associated dashboard: %s", err)
+		return fmt.Errorf("Error retrieving associated dashboard: %s", err)
 	}
 
-	for _, r := range dashboard.Graphs {
-		// TODO: efficiently test if the are the same
-		// for this POC we'll just match on title
-		if r.Title == d.Get("title") {
+	for _, g := range dashboard.Graphs {
+		// TODO: efficiently test if the are the same. There are no ID, and there might be changes.
+		// for now we'll use the title for as unique identifier. Interested in different strategies..
+
+		if g.Title == d.Get("title") {
 			fmt.Println("Found matching title. Start setting/saving state.")
 			d.Set("dashboard_id", d.Get("dashboard_id"))
-			d.Set("title", r.Title)
-			d.Set("description", r.Definition)
-			d.Set("viz", r.Definition.Viz)
-			// TODO: Add requests, a list of request IDs
-			return &r, nil
+			d.Set("title", g.Title)
+			d.Set("description", g.Definition)
+			d.Set("viz", g.Definition.Viz)
+
+			// Create an empty schema to hold all the requests.
+			request := &schema.Set{F: resourceDatadogRequestHash}
+
+			for _, r := range g.Definition.Requests {
+				m := make(map[string]interface{})
+
+				if r.Query != "" {
+					m["query"] = r.Query
+				}
+
+				m["stacked"] = r.Stacked
+
+				request.Add(m)
+			}
+
+			d.Set("request", request)
+
+			return nil
+
 		}
 	}
 
-	return nil, nil // TODO: should return something meaningful
+	// If we are still around we've not found ourselves, set SetId to empty so Terraform will create us.
+	d.SetId("")
+
+	return nil
 }
 
 func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error {
@@ -146,6 +165,7 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 		return err
 	}
 
+	/*
 	for _, r := range dashboard.Graphs {
 		// TODO: efficiently test if the are the same, use a Set and hashing?
 		if r.Title == d.Get("title") {
@@ -153,18 +173,19 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 			return nil
 		}
 	}
+	*/
 
 	log.Printf("[DEBUG] dashboard before added graph: %#v", dashboard)
-
-	graph_definition := datadog.Graph{}.Definition
-
-	graph_requests := datadog.Graph{}.Definition.Requests
-
-	graph_definition.Viz = d.Get("viz").(string)
 
 	log.Printf("[DEBUG] Checking if requests have changed.")
 
 	if d.HasChange("request") {
+		graph_definition := datadog.Graph{}.Definition
+
+		graph_requests := datadog.Graph{}.Definition.Requests
+
+		graph_definition.Viz = d.Get("viz").(string)
+
 		log.Printf("[DEBUG] Requests have changed.")
 		o, n := d.GetChange("request")
 		ors := o.(*schema.Set).Difference(n.(*schema.Set))
@@ -174,7 +195,6 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 		for _, request := range ors.List() {
 			m := request.(map[string]interface{})
 
-			// Delete the route as it no longer exists in the config
 			// TODO: implement
 			// Delete the query as it no longer exists in the config
 			log.Printf("[DEBUG] Deleting graph query %s", m["query"].(string))
@@ -193,7 +213,7 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 		for _, request := range nrs.List() {
 			m := request.(map[string]interface{})
 
-			// Delete the route as it no longer exists in the config
+			// Add the request
 			log.Printf("[DEBUG] Adding graph query %s", m["query"].(string))
 			log.Printf("[DEBUG] Adding graph stacked %s", m["stacked"].(bool))
 			graph_requests = append(graph_requests, GraphDefintionRequests{Query: m["query"].(string),
@@ -209,33 +229,38 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 			}
 			*/
 		}
+
+
+		/*
+		for _, query := range requests {
+			log.Printf("[DEBUG] query looks like: %#v", query)
+			graph_requests = append(graph_requests,
+			GraphDefintionRequests{Query: query,
+							   Stacked: d.Get("stacked").(bool)})
+		}
+		*/
+
+		// TODO: should this not only by done when there is a change?
+		graph_definition.Requests = graph_requests
+
+		the_graph := datadog.Graph{Title: d.Get("title").(string), Definition: graph_definition}
+
+		dashboard.Graphs = append(dashboard.Graphs, the_graph) // Should be done for each
+
+		log.Printf("[DEBUG] dashboard after adding graph: %#v", dashboard)
+
+		// Update/commit
+		err = client.UpdateDashboard(dashboard)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Printf("[DEBUG]No changes detected, nothing to do here.")
 	}
 
-	/*
-	for _, query := range requests {
-		log.Printf("[DEBUG] query looks like: %#v", query)
-		graph_requests = append(graph_requests,
-		GraphDefintionRequests{Query: query,
-						   Stacked: d.Get("stacked").(bool)})
-	}
-	*/
-
-	graph_definition.Requests = graph_requests
-
-	the_graph := datadog.Graph{Title: d.Get("title").(string), Definition: graph_definition}
-
-	dashboard.Graphs = append(dashboard.Graphs, the_graph) // Should be done for each
-
-	log.Printf("[DEBUG] dashboard after adding graph: %#v", dashboard)
-
-	// Update/commit
-	err = client.UpdateDashboard(dashboard)
-
-	if err != nil {
-		return err
-	}
-
-	return resourceDatadogGraphRead(d, meta)
+	return nil
+	//return resourceDatadogGraphRead(d, meta)
 }
 
 func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error {
@@ -258,6 +283,7 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 
 	// Now we will construct a new version of the graphs and call update with all the graphs
 	// apart from the current one.
+	// TODO: Use the set for this.
 	new_graphs := []datadog.Graph{}
 	for _, r := range dashboard.Graphs {
 		// TODO: efficiently test if the are the same
@@ -284,7 +310,7 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 		return err
 	}
 
-	_, err = resourceDatadogGraphRetrieve(d.Get("dashboard_id").(int), client, d)
+	err = resourceDatadogGraphRetrieve(d, meta)
 
 	if err != nil {
 		return err
@@ -293,7 +319,7 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 	return nil
 }
 
-func resourceDatadogGraphHash(v interface{}) int{
+func resourceDatadogRequestHash(v interface{}) int{
 	var buf bytes.Buffer
 	m := v.(map[string]interface{})
 
