@@ -195,6 +195,13 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 }
 
 func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error {
+	// TODO: add support for this a read function.
+	/* Read - This is called to resync the local state with the remote state.
+	 Terraform guarantees that an existing ID will be set. This ID should be
+	 used to look up the resource. Any remote data should be updated into the
+	 local data. No changes to the remote resource are to be made.
+	*/
+
 	return nil
 }
 
