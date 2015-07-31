@@ -24,10 +24,9 @@ Resulting binary:
 
 # Example config
 
-```
-   variable "api_key" { default = "" }
-   variable "app_key" { default = "" }
+Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
 
+```
    resource "datadog_dashboard" "foo" {
        description = "description for dashboard foo"
        title = "title for dashboard foo"
