@@ -112,7 +112,7 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 
 func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
-	log.Printf("[DEBUG] XX running create.")
+	log.Printf("[DEBUG] running create.")
 
 	w, w_err := client.CreateMonitor(buildMonitorStruct(d, "warning"))
 
@@ -136,7 +136,7 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
-	log.Printf("[DEBUG] XX running delete.")
+	log.Printf("[DEBUG] running delete.")
 
 	for _, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
@@ -162,10 +162,10 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 
 	client := meta.(*datadog.Client)
 
-	log.Printf("[DEBUG] XX running exists.")
+	log.Printf("[DEBUG] running exists.")
 
 	// Sanitise this one
-	exists := true
+	exists := false
 	for _, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
 			log.Printf("[DEBUG] Could not parse IDs. %s", v)
@@ -179,15 +179,16 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 		}
 		_, err := client.GetMonitor(Id)
 		if err != nil {
-			// Monitor did does not exists, continue.
+			// Monitor did does not exist, continue.
 			log.Printf("[DEBUG] monitor does not exist. %s", err)
 			e = err
 			continue
 		}
-		exists = exists && true
+		exists = true
 	}
-	if !exists {
-		return false, resourceDatadogMonitorDelete(d, meta)
+
+	if exists == false {
+		return false, nil
 	}
 
 	return true, nil
@@ -198,7 +199,7 @@ func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error 
 }
 
 func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[DEBUG] XX running update.")
+	log.Printf("[DEBUG] running update.")
 
 	split := strings.Split(d.Id(), "__")
 
