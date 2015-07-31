@@ -19,63 +19,169 @@ Moving terraform-provider-datadog_darwin_amd64 to /Applications/terraform/terraf
 
 Resulting binary:
 
--rwxr-xr-x 1 ojongerius staff 10442740 30 Jul 18:19 /Applications/terraform/terraform-provider-datadog
+-rwxr-xr-x 1 user staff 10442740 30 Jul 18:19 /Applications/terraform/terraform-provider-datadog
 ```
 
 # Example config
 
 ```
-variable "api_key" { default = "" }
-variable "app_key" { default = "" }
+   variable "api_key" { default = "" }
+   variable "app_key" { default = "" }
 
-resource "datadog_dashboard" "foo" {
-    description = "baz"
-    title = "bar"
-}
+   resource "datadog_dashboard" "foo" {
+       description = "description for dashboard foo"
+       title = "title for dashboard foo"
+   }
 
-resource "datadog_graph" "baz" {
-    title = "Average Memory Free baz"
-    dashboard_id = "${datadog_dashboard.foo.id}"
-    description = "baz"
-    title = "bar"
-    viz =  "timeseries"
-    request {
-        query =  "avg:system.cpu.system{*}"
-        stacked = false
-    }
-    request {
-        query =  "avg:system.cpu.user{*}"
-        stacked = false
-    }
-    request {
-        query =  "avg:system.mem.user{*}"
-        stacked = false
-    }
+   resource "datadog_graph" "bar" {
+       title = "Average Memory Free bar"
+       dashboard_id = "${datadog_dashboard.foo.id}"
+       description = "description for graph bar"
+       title = "bar"
+       viz =  "timeseries"
+       request {
+           query =  "avg:system.cpu.system{*}"
+           stacked = false
+       }
+       request {
+           query =  "avg:system.cpu.user{*}"
+           stacked = false
+       }
+       request {
+           query =  "avg:system.mem.user{*}"
+           stacked = false
+       }
 
-}
+   }
 
-resource "datadog_monitor" test_monitor {
-  name = "foo"
-  message = "Something that describes this monitor"
+   resource "datadog_monitor" "baz" {
+     name = "baz"
+     message = "Description of monitor baz"
 
-  metric = "aws.ec2.cpu"
-  metric_tags = "*" // one or more comma separated tags (defaults to *)
+     metric = "aws.ec2.cpu"
+     metric_tags = "*" // one or more comma separated tags (defaults to *)
 
-  time_aggr = "avg" // avg, sum, max, min, change, or pct_change
-  time_window = "last_1d" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
-  space_aggr = "avg" // avg, sum, min, or max
-  operator = "<" // <, <=, >, >=, ==, or !=
+     time_aggr = "avg" // avg, sum, max, min, change, or pct_change
+     time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
+     space_aggr = "avg" // avg, sum, min, or max
+     operator = "<" // <, <=, >, >=, ==, or !=
 
-  warning {
-    threshold = 0
-    notify = "@slack-<name>"
-  }
+     warning {
+       threshold = 0
+       notify = "@hipchat-<name>"
+     }
 
-  critical {
-    threshold = 0
-    notify = "@pagerduty"
-  }
+     critical {
+       threshold = 0
+       notify = "@pagerduty"
+     }
 
-  notify_no_data = false // Optional, defaults to true
-}
+     //notify_no_data = false // Optional, defaults to true
+   }
+```
+
+# Example usage
+
+```
+ojongerius@hipster  ~/dev/terraform/datadog_provider/conf  terraform plan
+
+ar.api_key
+  Enter a value:
+
+var.app_key
+  Enter a value:
+
+Refreshing Terraform state prior to plan...
+
+
+The Terraform execution plan has been generated and is shown below.
+Resources are shown in alphabetical order for quick scanning. Green resources
+will be created (or destroyed and then created if an existing resource
+exists), yellow resources are being changed in-place, and red resources
+will be destroyed.
+
+Note: You didn't specify an "-out" parameter to save this plan, so when
+"apply" is called, Terraform can't guarantee this is what will execute.
+
++ datadog_dashboard.foo
+    description: "" => "description for dashboard foo"
+    title:       "" => "title for dashboard foo"
+
++ datadog_graph.bar
+    dashboard_id:               "" => "0"
+    description:                "" => "description for graph bar"
+    request.#:                  "" => "3"
+    request.1259113621.query:   "" => "avg:system.cpu.system{*}"
+    request.1259113621.stacked: "" => "0"
+    request.3179289285.query:   "" => "avg:system.cpu.user{*}"
+    request.3179289285.stacked: "" => "0"
+    request.458314230.query:    "" => "avg:system.mem.user{*}"
+    request.458314230.stacked:  "" => "0"
+    title:                      "" => "Average Memory Free bar"
+    viz:                        "" => "timeseries"
+
++ datadog_monitor.baz
+    critical.#:         "0" => "2"
+    critical.notify:    "" => "@pagerduty"
+    critical.threshold: "" => "0"
+    message:            "" => "Description of monitor baz"
+    metric:             "" => "aws.ec2.cpu"
+    metric_tags:        "" => "*"
+    name:               "" => "baz"
+    notify_no_data:     "" => "1"
+    operator:           "" => "<"
+    space_aggr:         "" => "avg"
+    time_aggr:          "" => "avg"
+    time_window:        "" => "last_1h"
+    warning.#:          "0" => "2"
+    warning.notify:     "" => "@hipchat-<name>"
+    warning.threshold:  "" => "0"
+
+
+Plan: 3 to add, 0 to change, 0 to destroy.
+ ojongerius@hipster  ~/dev/terraform/datadog_provider/conf  terraform apply
+var.api_key
+  Enter a value:
+
+var.app_key
+  Enter a value:
+
+datadog_dashboard.foo: Creating...
+  description: "" => "description for dashboard foo"
+  title:       "" => "title for dashboard foo"
+datadog_monitor.baz: Creating...
+  critical.#:         "0" => "2"
+  critical.notify:    "" => "@pagerduty"
+  critical.threshold: "" => "0"
+  message:            "" => "Description of monitor baz"
+  metric:             "" => "aws.ec2.cpu"
+  metric_tags:        "" => "*"
+  name:               "" => "baz"
+  notify_no_data:     "" => "1"
+  operator:           "" => "<"
+  space_aggr:         "" => "avg"
+  time_aggr:          "" => "avg"
+  time_window:        "" => "last_1h"
+  warning.#:          "0" => "2"
+  warning.notify:     "" => "@hipchat-<name>"
+  warning.threshold:  "" => "0"
+datadog_monitor.baz: Creation complete
+datadog_dashboard.foo: Creation complete
+datadog_graph.bar: Creating...
+  dashboard_id:               "" => "61249"
+  description:                "" => "description for graph bar"
+  request.#:                  "" => "3"
+  request.1259113621.query:   "" => "avg:system.cpu.system{*}"
+  request.1259113621.stacked: "" => "0"
+  request.3179289285.query:   "" => "avg:system.cpu.user{*}"
+  request.3179289285.stacked: "" => "0"
+  request.458314230.query:    "" => "avg:system.mem.user{*}"
+  request.458314230.stacked:  "" => "0"
+  title:                      "" => "Average Memory Free bar"
+  viz:                        "" => "timeseries"
+datadog_graph.bar: Creation complete
+
+
+
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ```

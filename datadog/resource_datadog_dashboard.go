@@ -134,6 +134,7 @@ func resourceDatadogDashboardRetrieve(id int, client *datadog.Client, d *schema.
 
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving dashboard: %s", err)
+		return nil, fmt.Errorf("Error retrieving dashboard: %s", err)
 	}
 
 	d.Set("id", resp.Id)
