@@ -112,6 +112,7 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 
 func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
+	log.Printf("[DEBUG] XX running create.")
 
 	w, w_err := client.CreateMonitor(buildMonitorStruct(d, "warning"))
 
@@ -135,6 +136,8 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
+	log.Printf("[DEBUG] XX running delete.")
+
 	for _, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
 			return fmt.Errorf("Id not set.")
@@ -154,31 +157,40 @@ func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) erro
 }
 
 func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b bool, e error) {
+	// Exists - This is called to verify a resource still exists. It is called prior to Read,
+	// and lowers the burden of Read to be able to assume the resource exists.
+
 	client := meta.(*datadog.Client)
 
-	b = true
+	log.Printf("[DEBUG] XX running exists.")
+
+	// Sanitise this one
+	exists := true
 	for _, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
+			log.Printf("[DEBUG] Could not parse IDs. %s", v)
 			return false, fmt.Errorf("Id not set.")
 		}
 		Id, i_err := strconv.Atoi(v)
 
 		if i_err != nil {
+			log.Printf("[DEBUG] Received error converting string %s", i_err)
 			return false, i_err
 		}
 		_, err := client.GetMonitor(Id)
 		if err != nil {
-			// There is an error, we go on to the next
+			// Monitor did does not exists, continue.
+			log.Printf("[DEBUG] monitor does not exist. %s", err)
 			e = err
 			continue
 		}
-		b = b && true
+		exists = exists && true
 	}
-	if !b {
+	if !exists {
 		return false, resourceDatadogMonitorDelete(d, meta)
 	}
 
-	return false, nil
+	return true, nil
 }
 
 func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error {
@@ -186,6 +198,8 @@ func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error 
 }
 
 func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[DEBUG] XX running update.")
+
 	split := strings.Split(d.Id(), "__")
 
 	wID, cID := split[0], split[1]
