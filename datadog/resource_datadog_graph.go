@@ -78,7 +78,7 @@ func resourceDatadogGraph() *schema.Resource {
 func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error {
 	// TODO: This should create graphs associated with dashboards.
 	// it's a virtual resource, a la "resource_vpn_connection_route"
-	// hence will need to do a bit of hacking to find out what dashboard.
+	// hence we will need to do a bit of hacking to find out what dashboard.
 
 	resourceDatadogGraphUpdate(d, meta)
 
@@ -165,16 +165,6 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 		return err
 	}
 
-	/*
-	for _, r := range dashboard.Graphs {
-		// TODO: efficiently test if the are the same, use a Set and hashing?
-		if r.Title == d.Get("title") {
-			fmt.Println("Found matching title. Nothing to do here.")
-			return nil
-		}
-	}
-	*/
-
 	log.Printf("[DEBUG] dashboard before added graph: %#v", dashboard)
 
 	log.Printf("[DEBUG] Checking if requests have changed.")
@@ -186,7 +176,7 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 
 		graph_definition.Viz = d.Get("viz").(string)
 
-		log.Printf("[DEBUG] Requests have changed.")
+		log.Printf("[DEBUG] Request has changed.")
 		o, n := d.GetChange("request")
 		ors := o.(*schema.Set).Difference(n.(*schema.Set))
 		nrs := n.(*schema.Set).Difference(o.(*schema.Set))
@@ -200,15 +190,6 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 			log.Printf("[DEBUG] Deleting graph query %s", m["query"].(string))
 			log.Printf("[DEBUG] Deleting graph stacked %s", m["stacked"].(bool))
 
-			/*
-			_, err := conn.DeleteRoute(&ec2.DeleteRouteInput{
-				RouteTableID:         aws.String(d.Id()),
-				DestinationCIDRBlock: aws.String(m["cidr_block"].(string)),
-			})
-			if err != nil {
-				return err
-			}
-			*/
 		}
 		for _, request := range nrs.List() {
 			m := request.(map[string]interface{})
@@ -218,27 +199,8 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 			log.Printf("[DEBUG] Adding graph stacked %s", m["stacked"].(bool))
 			graph_requests = append(graph_requests, GraphDefintionRequests{Query: m["query"].(string),
 				Stacked: m["stacked"].(bool)})
-
-			/*
-			_, err := conn.DeleteRoute(&ec2.DeleteRouteInput{
-				RouteTableID:         aws.String(d.Id()),
-				DestinationCIDRBlock: aws.String(m["cidr_block"].(string)),
-			})
-			if err != nil {
-				return err
-			}
-			*/
 		}
 
-
-		/*
-		for _, query := range requests {
-			log.Printf("[DEBUG] query looks like: %#v", query)
-			graph_requests = append(graph_requests,
-			GraphDefintionRequests{Query: query,
-							   Stacked: d.Get("stacked").(bool)})
-		}
-		*/
 
 		// TODO: should this not only by done when there is a change?
 		graph_definition.Requests = graph_requests
@@ -266,14 +228,6 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
-	// We'll need to find ourselves
-	// * Get the dashboard(s) we are associated with. For this we'll need to access dashboard_id
-	// * In the dashboard see if we are there or no (we'll use the title, for now)
-	// * If not: return an error
-	// * If yes: recreate the dashboard *without* our graph
-
-	// We *could* use the hashing used by the AWS provider
-
 	// Grab the dashboard and fetch it.
 	dashboard, err := client.GetDashboard(d.Get("dashboard_id").(int))
 
@@ -296,12 +250,7 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 		}
 	}
 
-	// Can we do this?
 	dashboard.Graphs = new_graphs
-
-	// Call update with the Dashboard the new graph structure
-	// TODO: there is a lot of overlap with the create function, let's create a helper function to build it
-	// when we do a cleanup
 
 	// Update/commit
 	err = client.UpdateDashboard(dashboard)
