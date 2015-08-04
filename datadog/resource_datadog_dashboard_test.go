@@ -22,15 +22,10 @@ func TestAccDatadogDashboard_Basic(t *testing.T) {
 				Config: testAccCheckDatadogDashboardConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDatadogDashboardExists("datadog_dashboard.foo", &resp),
-					testAccCheckDatadogDashboardAttributes(&resp),
 					resource.TestCheckResourceAttr(
-						"datadog_dashboard.foo", "name", "terraform_example_dashboard"),
+						"datadog_dashboard.foo", "title", "title for dashboard foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_dashboard.foo", "title", "bar"),
-					resource.TestCheckResourceAttr(
-						"datadog_dashboard.foo", "description", "baz"),
-					resource.TestCheckResourceAttr(
-						"datadog_dashboard.foo", "graphs", ""),
+						"datadog_dashboard.foo", "description", "description for dashboard foo"),
 				),
 			},
 		},
@@ -60,26 +55,6 @@ func testAccCheckDatadogDashboardDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckDatadogDashboardAttributes(DashboardResp *datadog.Dashboard) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-
-		if DashboardResp.Title != "bar" {
-			return fmt.Errorf("Bad dashboard_title: %s", DashboardResp.Title)
-		}
-
-		if DashboardResp.Description != "baz" {
-			return fmt.Errorf("Bad dashboard_description: %s", DashboardResp.Title)
-		}
-
-		// TODO: should be a list
-		if len(DashboardResp.Graphs) != 0 {
-			return fmt.Errorf("Bad dashboard_graphs : %s", DashboardResp.Title)
-		}
-
-		return nil
-	}
-}
-
 func testAccCheckDatadogDashboardExists(n string, DashboardResp *datadog.Dashboard) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
@@ -89,7 +64,7 @@ func testAccCheckDatadogDashboardExists(n string, DashboardResp *datadog.Dashboa
 		}
 
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("No Domain ID is set")
+			return fmt.Errorf("No Dashboard ID is set")
 		}
 
 		client := testAccProvider.Meta().(*datadog.Client)
@@ -119,8 +94,7 @@ func testAccCheckDatadogDashboardExists(n string, DashboardResp *datadog.Dashboa
 
 const testAccCheckDatadogDashboardConfig_basic = `
 resource "datadog_dashboard" "foo" {
-    name = "terraform_example_dashboard"
-    title = "bar"
-    description = "baz"
-    graphs = ""
-}`
+       description = "description for dashboard foo"
+       title = "title for dashboard foo"
+   }
+`
