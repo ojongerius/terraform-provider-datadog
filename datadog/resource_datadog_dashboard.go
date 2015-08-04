@@ -47,6 +47,7 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 	opts.Title = d.Get("title").(string)
 
 	// A dummy placeholder graph (a graph is mandatory)
+	// We cannot get rid of this placeholder graph, so we'll nuke it when applying graphs
 	graph_defintion := datadog.Graph{}.Definition
 	graph_defintion.Viz = "timeseries"
 	r := datadog.Graph{}.Definition.Requests
