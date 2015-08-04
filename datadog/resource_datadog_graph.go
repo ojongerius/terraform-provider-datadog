@@ -76,9 +76,11 @@ func resourceDatadogGraph() *schema.Resource {
 }
 
 func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error {
-	// TODO: This should create graphs associated with dashboards.
+	// This should create graphs associated with dashboards.
 	// it's a virtual resource, a la "resource_vpn_connection_route"
 	// hence we will need to do a bit of hacking to find out what dashboard.
+
+	// TODO: Delete the default graph with title "Mandatory default graph title"
 
 	resourceDatadogGraphUpdate(d, meta)
 
@@ -86,7 +88,7 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 
 	d.SetId(strconv.Itoa(Id)) // Use seconds since Epoch, needs to be a string when saving.
 
-	log.Printf("[INFO] Dashboard ID: %s", Id)
+	log.Printf("[INFO] Dashboard ID: %d", Id)
 
 	err := resourceDatadogGraphRetrieve(d, meta)
 
@@ -188,7 +190,7 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 			// TODO: implement
 			// Delete the query as it no longer exists in the config
 			log.Printf("[DEBUG] Deleting graph query %s", m["query"].(string))
-			log.Printf("[DEBUG] Deleting graph stacked %s", m["stacked"].(bool))
+			log.Printf("[DEBUG] Deleting graph stacked %t", m["stacked"].(bool))
 
 		}
 		for _, request := range nrs.List() {
@@ -196,7 +198,7 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 
 			// Add the request
 			log.Printf("[DEBUG] Adding graph query %s", m["query"].(string))
-			log.Printf("[DEBUG] Adding graph stacked %s", m["stacked"].(bool))
+			log.Printf("[DEBUG] Adding graph stacked %t", m["stacked"].(bool))
 			graph_requests = append(graph_requests, GraphDefintionRequests{Query: m["query"].(string),
 				Stacked: m["stacked"].(bool)})
 		}
@@ -277,7 +279,7 @@ func resourceDatadogRequestHash(v interface{}) int{
 	}
 
 	if v, ok := m["stacked"];  ok {
-		buf.WriteString(fmt.Sprintf("%s-", v.(bool)))
+		buf.WriteString(fmt.Sprintf("%t-", v.(bool)))
 	}
 
 	return hashcode.String(buf.String())
