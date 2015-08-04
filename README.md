@@ -4,29 +4,43 @@ Warning: This plugin is work in progress.
 
 A terraform plugin that provides resources for Datadog.
 
+# Test
+
+```sh
+> make test
+go generate ./...
+TF_ACC= go test ./...  -timeout=30s -parallel=4
+?       github.com/ojongerius/terraform-provider-datadog[no test files]
+ok      github.com/ojongerius/terraform-provider-datadog/datadog0.007s
+go tool vet -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc
+-printf -rangeloops -shift -structtags -unsafeptr .
+```
+
 # Build
 
-```
-./build.sh
+```sh
+> make bin
+ go generate ./...
+ Compiling for OS: darwin and ARCH: amd64
+ Number of parallel builds: 8
 
-Compiling for OS: darwin and ARCH: amd64
-Number of parallel builds: 8
+ -->    darwin/amd64: github.com/ojongerius/terraform-provider-datadog
+ Looking for Terraform install
 
--->    darwin/amd64: github.com/ojongerius/terraform-provider-datadog
-Looking for Terraform install
+ Moving terraform-provider-datadog_darwin_amd64 to
+ /Applications/terraform/terraform-provider-datadog
 
-Moving terraform-provider-datadog_darwin_amd64 to /Applications/terraform/terraform-provider-datadog
+ Resulting binary:
 
-Resulting binary:
-
--rwxr-xr-x 1 user staff 10442740 30 Jul 18:19 /Applications/terraform/terraform-provider-datadog
+ -rwxr-xr-x 1 ojongerius staff 10442740 4 Aug 18:32
+ /Applications/terraform/terraform-provider-datadog
 ```
 
 # Example config
 
 Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
 
-```
+```json
    resource "datadog_dashboard" "foo" {
        description = "description for dashboard foo"
        title = "title for dashboard foo"
@@ -81,8 +95,8 @@ Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
 
 # Example usage
 
-```
-ojongerius@hipster  ~/dev/terraform/datadog_provider/conf  terraform plan
+```sh
+> terraform plan
 
 ar.api_key
   Enter a value:
@@ -138,7 +152,7 @@ Note: You didn't specify an "-out" parameter to save this plan, so when
 
 
 Plan: 3 to add, 0 to change, 0 to destroy.
- ojongerius@hipster  ~/dev/terraform/datadog_provider/conf  terraform apply
+> terraform apply
 var.api_key
   Enter a value:
 
