@@ -40,7 +40,7 @@ go tool vet -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc
 
 Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
 
-```HCL
+```
    resource "datadog_dashboard" "foo" {
        description = "description for dashboard foo"
        title = "title for dashboard foo"
