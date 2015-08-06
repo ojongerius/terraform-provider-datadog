@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"time"
+	"strings"
 
 	"github.com/zorkian/go-datadog-api"
 
@@ -22,6 +23,7 @@ type GraphDefintionRequests struct {
 func resourceDatadogGraph() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogGraphCreate,
+		Exists: resourceDatadogGraphExists,
 		Read:   resourceDatadogGraphRead,
 		Delete: resourceDatadogGraphDelete,
 		Update: resourceDatadogGraphUpdate,
@@ -97,6 +99,34 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	return nil
+}
+
+func resourceDatadogGraphExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	client := meta.(*datadog.Client)
+
+	// TODO:
+	// * Does the dashboard exist? TODO: create a helper function for this one
+
+	_, err := client.GetDashboard(d.Get("dashboard_id").(int))
+
+	if err != nil {
+		if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("Error retrieving dashboard: %s", err)
+	}
+
+
+	// * Does the graph exist?
+
+	err = resourceDatadogGraphRead(d, meta)
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func resourceDatadogGraphRead(d *schema.ResourceData, meta interface{}) error {
