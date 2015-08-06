@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
@@ -99,6 +100,10 @@ func resourceDatadogDashboardExists(d *schema.ResourceData, meta interface{}) (b
 	_, err := client.GetDashboard(id)
 
 	if err != nil {
+		if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
+			return false, nil
+		}
+
 		return false, fmt.Errorf("Error retrieving dashboard: %s", err)
 	}
 
