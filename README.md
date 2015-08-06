@@ -1,43 +1,79 @@
 # terraform-provider-datadog
 
-Warning: This plugin is work in progress.
+A Terraform plugin that provides resources for Datadog.
 
-A terraform plugin that provides resources for Datadog.
+Currently supports 3 resources:
 
-# Test
+* Timeboard: datadog_dashboard
+* Graphs: datadog_graph
+* Monitors: datadog_monitor
 
-```sh
-> make test
-go generate ./...
-TF_ACC= go test ./...  -timeout=30s -parallel=4
-?       github.com/ojongerius/terraform-provider-datadog[no test files]
-ok      github.com/ojongerius/terraform-provider-datadog/datadog0.007s
-go tool vet -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc
--printf -rangeloops -shift -structtags -unsafeptr .
+## dashboard
+Config:
+
+```
+   resource "datadog_dashboard" "foo" {
+       description = "description for dashboard foo"
+       title = "title for dashboard foo"
+   }
+```
+## graph
+Config:
+
+```
+   resource "datadog_graph" "bar" {
+       title = "Average Memory Free bar"
+       dashboard_id = "${datadog_dashboard.foo.id}"
+       description = "description for graph bar"
+       title = "bar"
+       viz =  "timeseries"
+       request {
+           query =  "avg:system.cpu.system{*}"
+           stacked = false
+       }
+       request {
+           query =  "avg:system.cpu.user{*}"
+           stacked = false
+       }
+       request {
+           query =  "avg:system.mem.user{*}"
+           stacked = false
+       }
+
+   }
 ```
 
-# Build
+## monitor
+Config:
 
-```sh
-> make bin
- go generate ./...
- Compiling for OS: darwin and ARCH: amd64
- Number of parallel builds: 8
+```
+   resource "datadog_monitor" "baz" {
+     name = "baz"
+     message = "Description of monitor baz"
 
- -->    darwin/amd64: github.com/ojongerius/terraform-provider-datadog
- Looking for Terraform install
+     metric = "aws.ec2.cpu"
+     metric_tags = "*" // one or more comma separated tags (defaults to *)
 
- Moving terraform-provider-datadog_darwin_amd64 to
- /Applications/terraform/terraform-provider-datadog
+     time_aggr = "avg" // avg, sum, max, min, change, or pct_change
+     time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
+     space_aggr = "avg" // avg, sum, min, or max
+     operator = "<" // <, <=, >, >=, ==, or !=
 
- Resulting binary:
+     warning {
+       threshold = 0
+       notify = "@hipchat-<name>"
+     }
 
- -rwxr-xr-x 1 ojongerius staff 10442740 4 Aug 18:32
- /Applications/terraform/terraform-provider-datadog
+     critical {
+       threshold = 0
+       notify = "@pagerduty"
+     }
+
+     //notify_no_data = false // Optional, defaults to true
+   }
 ```
 
-# Example config
-
+## Example config combined
 Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
 
 ```
@@ -93,17 +129,11 @@ Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
    }
 ```
 
-# Example usage
+## Usage
 
+##plan
 ```sh
 > terraform plan
-
-ar.api_key
-  Enter a value:
-
-var.app_key
-  Enter a value:
-
 Refreshing Terraform state prior to plan...
 
 
@@ -152,13 +182,12 @@ Note: You didn't specify an "-out" parameter to save this plan, so when
 
 
 Plan: 3 to add, 0 to change, 0 to destroy.
+```
+
+##applying
+
+```sh
 > terraform apply
-var.api_key
-  Enter a value:
-
-var.app_key
-  Enter a value:
-
 datadog_dashboard.foo: Creating...
   description: "" => "description for dashboard foo"
   title:       "" => "title for dashboard foo"
@@ -197,4 +226,38 @@ datadog_graph.bar: Creation complete
 
 
 Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+```
+
+## Running tests
+
+```sh
+> make test
+go generate ./...
+TF_ACC= go test ./...  -timeout=30s -parallel=4
+?       github.com/ojongerius/terraform-provider-datadog[no test files]
+ok      github.com/ojongerius/terraform-provider-datadog/datadog0.007s
+go tool vet -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc
+-printf -rangeloops -shift -structtags -unsafeptr .
+```
+
+Or run tests in acceptance by running `make testacc`.
+
+## Building
+
+```sh
+> make bin
+ go generate ./...
+ Compiling for OS: darwin and ARCH: amd64
+ Number of parallel builds: 8
+
+ -->    darwin/amd64: github.com/ojongerius/terraform-provider-datadog
+ Looking for Terraform install
+
+ Moving terraform-provider-datadog_darwin_amd64 to
+ /Applications/terraform/terraform-provider-datadog
+
+ Resulting binary:
+
+ -rwxr-xr-x 1 ojongerius staff 10442740 4 Aug 18:32
+ /Applications/terraform/terraform-provider-datadog
 ```
