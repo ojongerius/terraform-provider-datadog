@@ -1,6 +1,6 @@
 # terraform-provider-datadog
 
-A Terraform plugin that provides resources for Datadog.
+A [Terraform](https://github.com/hashicorp/terraform) plugin that provides resources for [Datadog](https://www.datadoghq.com/).
 
 Currently supports 3 resources:
 
@@ -9,8 +9,9 @@ Currently supports 3 resources:
 * Monitors: datadog_monitor (originally contributed by [Vincenzo
   Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio).
 
-## dashboard
-Config:
+## Dashboards
+
+Example configuration:
 
 ```
    resource "datadog_dashboard" "foo" {
@@ -18,8 +19,9 @@ Config:
        title = "title for dashboard foo"
    }
 ```
-## graph
-Config:
+## Graphs
+
+Example configuration:
 
 ```
    resource "datadog_graph" "bar" {
@@ -44,8 +46,9 @@ Config:
    }
 ```
 
-## monitor
-Config:
+## Monitors
+
+Example configuration:
 
 ```
    resource "datadog_monitor" "baz" {
@@ -74,8 +77,7 @@ Config:
    }
 ```
 
-## Example config combined
-Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
+## Example configuration combined
 
 ```
    resource "datadog_dashboard" "foo" {
@@ -132,7 +134,11 @@ Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
 
 ## Usage
 
-##plan
+Like any other Terraform interations.
+
+Pro tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
+
+###Plan
 ```sh
 > terraform plan
 Refreshing Terraform state prior to plan...
@@ -185,7 +191,7 @@ Note: You didn't specify an "-out" parameter to save this plan, so when
 Plan: 3 to add, 0 to change, 0 to destroy.
 ```
 
-##applying
+###Apply
 
 ```sh
 > terraform apply
@@ -229,7 +235,8 @@ datadog_graph.bar: Creation complete
 Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ```
 
-## Running tests
+## Development
+### Running tests
 
 ```sh
 > make test
@@ -243,7 +250,14 @@ go tool vet -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc
 
 Or run tests in acceptance by running `make testacc`.
 
-## Building
+### Building
+
+Building defaults to the platform you run on, and depends on
+[gox](https://github.com/mitchellh/gox). If you do not have it installed:
+
+```sh
+go get github.com/mitchellh/gox
+```
 
 ```sh
 > make bin
