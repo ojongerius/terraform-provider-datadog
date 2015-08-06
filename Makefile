@@ -1,4 +1,4 @@
-TEST?=./...
+TEST?=./datadog
 VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
 
 default: test
@@ -13,11 +13,6 @@ test: generate
 
 # testacc runs acceptance tests
 testacc: generate
-	@if [ "$(TEST)" = "./..." ]; then \
-		echo "ERROR: Set TEST to a specific package. For example,"; \
-		echo "  make testacc TEST=./builtin/providers/aws"; \
-		exit 1; \
-	fi
 	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 90m
 
 # testrace runs the race checker
@@ -38,8 +33,8 @@ vet:
 	@go tool vet 2>/dev/null ; if [ $$? -eq 3 ]; then \
 		go get golang.org/x/tools/cmd/vet; \
 	fi
-	@echo "go tool vet $(VETARGS) ."
-	@go tool vet $(VETARGS) . ; if [ $$? -eq 1 ]; then \
+	@echo "go tool vet $(VETARGS) $(TEST) "
+	@go tool vet $(VETARGS) $(TEST) ; if [ $$? -eq 1 ]; then \
 		echo ""; \
 		echo "Vet found suspicious constructs. Please check the reported constructs"; \
 		echo "and fix them if necessary before submitting the code for review."; \
