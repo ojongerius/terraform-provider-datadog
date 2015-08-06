@@ -11,8 +11,6 @@ import (
 )
 
 func TestAccDatadogGraph_Basic(t *testing.T) {
-	var resp datadog.Graph
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
@@ -21,7 +19,7 @@ func TestAccDatadogGraph_Basic(t *testing.T) {
 			resource.TestStep{
 				Config: testAccCheckDatadogGraphConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckDatadogGraphExists("datadog_graph.bar", &resp),
+					testAccCheckDatadogGraphExists("datadog_graph.bar"),
 					// TODO: Test request attributes
 					resource.TestCheckResourceAttr(
 						"datadog_dashboard.foo", "title", "title for dashboard foo"),
@@ -115,7 +113,7 @@ func getGraphFromDashboard(id, title string) (datadog.Graph, error) {
 	return graph, nil
 }
 
-func testAccCheckDatadogGraphExists(n string, GraphResp *datadog.Graph) resource.TestCheckFunc {
+func testAccCheckDatadogGraphExists(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
@@ -132,7 +130,7 @@ func testAccCheckDatadogGraphExists(n string, GraphResp *datadog.Graph) resource
 			return err
 		}
 
-		// See if out graph is in the dashboard
+		// See if our graph is in the dashboard
 		_, err = getGraphFromDashboard(dashboard_id, rs.Primary.Attributes["title"])
 
 		if err != nil {
