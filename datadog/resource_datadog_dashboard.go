@@ -14,6 +14,7 @@ func resourceDatadogDashboard() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogDashboardCreate,
 		Read:   resourceDatadogDashboardRead,
+		Exists: resourceDatadogDashboardExists,
 		Delete: resourceDatadogDashboardDelete,
 		// TODO: add Update
 
@@ -48,11 +49,11 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 
 	// A dummy placeholder graph (a graph is mandatory)
 	// We cannot get rid of this placeholder graph, so we'll nuke it when applying graphs
-	graph_defintion := datadog.Graph{}.Definition
-	graph_defintion.Viz = "timeseries"
+	graph_definition := datadog.Graph{}.Definition
+	graph_definition.Viz = "timeseries"
 	r := datadog.Graph{}.Definition.Requests
-    graph_defintion.Requests = append(r, GraphDefintionRequests{Query: "avg:system.mem.free{*}", Stacked: false})
-    graph := datadog.Graph{Title: "Mandatory default graph title", Definition: graph_defintion}
+    graph_definition.Requests = append(r, GraphDefintionRequests{Query: "avg:system.mem.free{*}", Stacked: false})
+    graph := datadog.Graph{Title: "Mandatory default graph title", Definition: graph_definition}
     graphs := []datadog.Graph{}
     graphs = append(graphs, graph) // Should be done for each
     opts.Graphs = graphs
@@ -65,15 +66,7 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 
 	d.SetId(strconv.Itoa(dashboard.Id))
 
-	log.Printf("[INFO] Dashboard ID: %s", d.Id())
-
-	IntId, err := strconv.Atoi(d.Id())
-
-	if err != nil {
-		return fmt.Errorf("Error converting dashboard ID: %s", err)
-	}
-
-	_, err = resourceDatadogDashboardRetrieve(IntId, client, d)
+	err = resourceDatadogDashboardRead(d, meta)
 
 	if err != nil {
 		return fmt.Errorf("Error retrieving Dashboard: %s", err)
@@ -85,15 +78,11 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 func resourceDatadogDashboardDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
-	log.Printf("[INFO] Deleting Dashboard: %s", d.Id())
+	log.Printf("[DEBUG] Deleting Dashboard: %s", d.Id())
 
-	IntId, err := strconv.Atoi(d.Id())
+	id, _ := strconv.Atoi(d.Id())
 
-	if err != nil {
-		return fmt.Errorf("Error converting dashboard ID: %s", err)
-	}
-
-	err = client.DeleteDashboard(IntId)
+	err := client.DeleteDashboard(id)
 
 	if err != nil {
 		return fmt.Errorf("Error deleting Dashboard: %s", err)
@@ -102,29 +91,29 @@ func resourceDatadogDashboardDelete(d *schema.ResourceData, meta interface{}) er
 	return nil
 }
 
+func resourceDatadogDashboardExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	client := meta.(*datadog.Client)
+
+	id, _ := strconv.Atoi(d.Id())
+
+	_, err := client.GetDashboard(id)
+
+	if err != nil {
+		return false, fmt.Errorf("Error retrieving dashboard: %s", err)
+	}
+
+	return true, nil
+}
+
 func resourceDatadogDashboardRead(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
-	StringId, int_err := strconv.Atoi(d.Id())
+	id, _ := strconv.Atoi(d.Id())
 
-	if int_err != nil {
-		return fmt.Errorf("Error converting dashboard ID: %s", int_err)
-	}
-
-	_, err := resourceDatadogDashboardRetrieve(StringId, client, d)
-
-	if err != nil {
-		return fmt.Errorf("Error retrieving Dashboard: %s", err)
-	}
-
-	return nil
-}
-
-func resourceDatadogDashboardRetrieve(id int, client *datadog.Client, d *schema.ResourceData) (**datadog.Dashboard, error) {
 	resp, err := client.GetDashboard(id)
 
 	if err != nil {
-		return nil, fmt.Errorf("Error retrieving dashboard: %s", err)
+		return fmt.Errorf("Error retrieving dashboard: %s", err)
 	}
 
 	d.Set("id", resp.Id)
@@ -132,5 +121,5 @@ func resourceDatadogDashboardRetrieve(id int, client *datadog.Client, d *schema.
 	d.Set("title", resp.Title)
 	d.Set("graphs", resp.Graphs)
 
-	return &resp, nil
+	return nil
 }
