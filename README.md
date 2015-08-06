@@ -6,8 +6,16 @@ Currently supports 3 resources:
 
 * Timeboards: datadog_dashboard
 * Graphs: datadog_graph
-* Monitors: datadog_monitor (originally contributed by [Vincenzo
+* Monitors: datadog_monitor -originally contributed by [Vincenzo
   Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio).
+
+Feel free to open new [issues](https://github.com/ojongerius/terraform-provider-datadog/issues) for extra resources or bugs you find. After finishing
+polishing of the current resources I'm planning to add a
+[Screenboard](https://github.com/ojongerius/terraform-provider-datadog/issues/4).
+
+Want to contribute? Find a resource you want to add or work on an issue over
+[here]( 
+https://github.com/ojongerius/terraform-provider-datadog/issues).
 
 ## Dashboards
 
