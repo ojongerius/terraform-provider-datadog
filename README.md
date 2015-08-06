@@ -4,9 +4,10 @@ A Terraform plugin that provides resources for Datadog.
 
 Currently supports 3 resources:
 
-* Timeboard: datadog_dashboard
+* Timeboards: datadog_dashboard
 * Graphs: datadog_graph
-* Monitors: datadog_monitor
+* Monitors: datadog_monitor (originally contributed by [Vincenzo
+  Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio).
 
 ## dashboard
 Config:
