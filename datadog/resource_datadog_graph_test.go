@@ -67,22 +67,24 @@ func testAccCheckDatadogGraphDestroy(s *terraform.State) error {
 
 func getGraphDashboard(s *terraform.State, rs *terraform.ResourceState) (string, error) {
 
+	var id string
+
 	for _, d := range rs.Dependencies {
 
 		rs, ok := s.RootModule().Resources[d]
 
 		if !ok {
-			return "", fmt.Errorf("Not found: %s", d)
+			return id, fmt.Errorf("Not found: %s", d)
 		}
 
 		if rs.Primary.ID == "" {
-			return "", fmt.Errorf("No ID is set")
+			return id, fmt.Errorf("No ID is set")
 		}
 
 		return rs.Primary.ID, nil
 	}
 
-	return "", fmt.Errorf("Failed to find dashboard in state.") // TODO: make this a little nicer?
+	return id, fmt.Errorf("Failed to find dashboard in state.")
 
 }
 
