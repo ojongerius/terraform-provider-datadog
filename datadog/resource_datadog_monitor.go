@@ -90,9 +90,13 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 	metric := d.Get("metric").(string)
 	tags := d.Get("metric_tags").(string)
 	operator := d.Get("operator").(string)
-	query := fmt.Sprintf("%s(%s):%s:%s{%s} %s %s", timeAggr, timeWindow, spaceAggr, metric, tags, operator, d.Get(fmt.Sprintf("%s.threshold", typeStr)))
-
-	log.Println(query)
+	query := fmt.Sprintf("%s(%s):%s:%s{%s} %s %s", timeAggr,
+		                                           timeWindow,
+					                               spaceAggr,
+		                                           metric,
+												   tags,
+		                                           operator,
+		                                           d.Get(fmt.Sprintf("%s.threshold", typeStr)))
 
 	o := datadog.Options{
 		NotifyNoData: d.Get("notify_no_data").(bool),
@@ -112,7 +116,6 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 
 func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
-	log.Printf("[DEBUG] running create.")
 
 	w, w_err := client.CreateMonitor(buildMonitorStruct(d, "warning"))
 
@@ -135,8 +138,6 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 
 func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
-
-	log.Printf("[DEBUG] running delete.")
 
 	for _, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
@@ -162,27 +163,28 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 
 	client := meta.(*datadog.Client)
 
-	log.Printf("[DEBUG] running exists.")
-
-	// Sanitise this one
 	exists := false
 	for _, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
-			log.Printf("[DEBUG] Could not parse IDs. %s", v)
+			log.Printf("[DEBUG] Could not parse IDs: %s", v)
 			return false, fmt.Errorf("Id not set.")
 		}
 		Id, i_err := strconv.Atoi(v)
 
 		if i_err != nil {
-			log.Printf("[DEBUG] Received error converting string %s", i_err)
+			log.Printf("[DEBUG] Received error converting string: %s", i_err)
 			return false, i_err
 		}
 		_, err := client.GetMonitor(Id)
 		if err != nil {
-			// Monitor did does not exist, continue.
-			log.Printf("[DEBUG] monitor does not exist. %s", err)
-			e = err
-			continue
+			if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
+				log.Printf("[DEBUG] monitor does not exist: %s", err)
+				exists = false
+				continue
+			} else {
+				e = err
+				continue
+			}
 		}
 		exists = true
 	}
