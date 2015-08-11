@@ -147,7 +147,7 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 	for _, g := range dashboard.Graphs {
 		// TODO: Using the title as unique identifier is 'suboptimal'. Interested in different strategies.
 		if g.Title == d.Get("title") {
-			fmt.Println("Found matching title. Start setting/saving state.")
+			log.Printf("[DEBUG] Found matching title. Start setting/saving state.")
 			d.Set("dashboard_id", d.Get("dashboard_id"))
 			d.Set("title", g.Title)
 			d.Set("description", g.Definition)
@@ -244,7 +244,7 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 			return err
 		}
 	} else {
-		log.Printf("[DEBUG]No changes detected, nothing to do here.")
+		log.Printf("[DEBUG] No changes detected, nothing to do here.")
 	}
 
 	return nil
