@@ -28,8 +28,6 @@ func TestAccDatadogGraph_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_graph.bar", "title", "title for graph bar"),
 					resource.TestCheckResourceAttr(
-						"datadog_graph.bar", "description", "description for graph bar"),
-					resource.TestCheckResourceAttr(
 						"datadog_graph.bar", "viz", "timeseries"),
 				),
 			},
@@ -150,7 +148,6 @@ resource "datadog_dashboard" "foo" {
 resource "datadog_graph" "bar" {
 	title = "title for graph bar"
     dashboard_id = "${datadog_dashboard.foo.id}"
-    description = "description for graph bar"
     title = "bar"
     viz =  "timeseries"
     request {
