@@ -35,11 +35,6 @@ func resourceDatadogGraph() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
-			"description": &schema.Schema{
-				Type:     schema.TypeString,
-				ForceNew: true,
-				Optional: true,
-			},
 			"title": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -150,7 +145,6 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 			log.Printf("[DEBUG] Found matching title. Start setting/saving state.")
 			d.Set("dashboard_id", d.Get("dashboard_id"))
 			d.Set("title", g.Title)
-			d.Set("description", g.Definition)
 			d.Set("viz", g.Definition.Viz)
 
 			// Create an empty schema to hold all the requests.
