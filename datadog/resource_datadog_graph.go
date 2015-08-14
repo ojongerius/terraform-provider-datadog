@@ -35,11 +35,6 @@ func resourceDatadogGraph() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
-			"description": &schema.Schema{
-				Type:     schema.TypeString,
-				ForceNew: true,
-				Optional: true,
-			},
 			"title": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -82,13 +77,14 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 
 	// TODO: Delete placeholder graph. See https://github.com/ojongerius/terraform-provider-datadog/issues/8
 
+	if d.Id() == "" {
+		Id := int(time.Now().Unix())
+		d.SetId(strconv.Itoa(Id)) // Use seconds since Epoch, needs to be a string when saving.
+
+		log.Printf("[INFO] Graph ID: %d", Id)
+	}
+
 	resourceDatadogGraphUpdate(d, meta)
-
-	Id := int(time.Now().Unix())
-
-	d.SetId(strconv.Itoa(Id)) // Use seconds since Epoch, needs to be a string when saving.
-
-	log.Printf("[INFO] Dashboard ID: %d", Id)
 
 	err := resourceDatadogGraphRetrieve(d, meta)
 
@@ -145,12 +141,12 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 
 	// Walk through the graphs
 	for _, g := range dashboard.Graphs {
-		// TODO: Using the title as unique identifier is 'suboptimal'. Interested in different strategies.
-		if g.Title == d.Get("title") {
-			log.Printf("[DEBUG] Found matching title. Start setting/saving state.")
+		// If it ends with our ID, it's us:
+		if strings.HasSuffix(g.Title, fmt.Sprintf("(%s)", d.Id())){
+			log.Printf("[DEBUG] Found matching graph. Start setting/saving state.")
 			d.Set("dashboard_id", d.Get("dashboard_id"))
-			d.Set("title", g.Title)
-			d.Set("description", g.Definition)
+			// Save title to state, but strip ID
+			d.Set("title", strings.Replace(g.Title, fmt.Sprintf(" (%s)", d.Id()), "", 1))
 			d.Set("viz", g.Definition.Viz)
 
 			// Create an empty schema to hold all the requests.
@@ -175,7 +171,7 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 		}
 	}
 
-	// If we are still around we've not found ourselves. Set SetId to empty so Terraform will create the resource for us.
+	// If we are still around we've not found ourselves. Set SetId to empty and Terraform will create the resource for us.
 	d.SetId("")
 
 	return nil
@@ -191,13 +187,8 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 		return err
 	}
 
-	log.Printf("[DEBUG] dashboard before added graph: %#v", dashboard)
-
-	log.Printf("[DEBUG] Checking if requests have changed.")
-
 	// Check if there are changes
 	if d.HasChange("request") {
-
 		graph_definition := datadog.Graph{}.Definition
 		graph_requests := datadog.Graph{}.Definition.Requests
 		graph_definition.Viz = d.Get("viz").(string)
@@ -228,29 +219,22 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 				Stacked: m["stacked"].(bool)})
 		}
 
-
 		// Add requests to the graph definition
 		graph_definition.Requests = graph_requests
-		the_graph := datadog.Graph{Title: d.Get("title").(string), Definition: graph_definition}
+		title := d.Get("title").(string) + fmt.Sprintf(" (%s)", d.Id())
+		the_graph := datadog.Graph{Title: title, Definition: graph_definition}
 
 		dashboard.Graphs = append(dashboard.Graphs, the_graph) // Should be done for each
+	}
 
-		log.Printf("[DEBUG] dashboard after adding graph: %#v", dashboard)
+	// Update/commit
+	err = client.UpdateDashboard(dashboard)
 
-		// Update/commit
-		err = client.UpdateDashboard(dashboard)
-
-		if err != nil {
-			return err
-		}
-	} else {
-		log.Printf("[DEBUG] No changes detected, nothing to do here.")
+	if err != nil {
+		return err
 	}
 
 	return nil
-
-	// TODO: still need this?
-	//return resourceDatadogGraphRead(d, meta)
 }
 
 func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error {
@@ -264,11 +248,11 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	// Build a new slice of graphs, without the nominee to deleted.
-	// TODO: Use the set for this.
 	new_graphs := []datadog.Graph{}
 	for _, r := range dashboard.Graphs {
-		// TODO: efficiently test if the are the same for this POC we'll just match on title
-		if r.Title == d.Get("title") {
+		// TODO: Find our ID in the title
+		if strings.HasSuffix(r.Title, fmt.Sprintf("(%s)", d.Id())) {
+			//if r.Title == d.Get("title") {
 			continue
 		} else {
 			new_graphs = append(new_graphs, r)
