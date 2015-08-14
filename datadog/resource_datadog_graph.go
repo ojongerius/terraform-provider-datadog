@@ -77,13 +77,37 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 
 	// TODO: Delete placeholder graph. See https://github.com/ojongerius/terraform-provider-datadog/issues/8
 
+	// TODO:
+	// * In Create; use as ID, the hash of the whole graph.
+	// * When matching in Read/Retrieve; use this hash to see if we found it (yes this is relatively resource intense)
+	// * This does imply that we *must* delete all graphs that are *not* know to us. How do we pull that off?
+	//                    ^^ do we do that by re-posting all graphs on an update?
+	//                    ^^ this is tricky. The graph resources do not know about others graphs, so we will just not
+	//                       find ourselves...
+	//                       The trick used by Terraform is for route tables and routes in it. Which is a different case.
+	// * Profit
+	//
+	// New approach:
+    //
+	// ID in title.
+	//
+	// Difficulty; we can't expect the user to have the ID in their description
+	// 		       but they change detection needs be so that we add be aware of this -Use the ID to identify
+	//                 remove the ID of the diff.
+	//
+	// * Change Read function so find it by the ID, but store the title without the ID
+	// * Change Update function to append the ID when updating the Dashboard at DD
+
+
+	if d.Id() == "" {
+		Id := int(time.Now().Unix())
+		d.SetId(strconv.Itoa(Id)) // Use seconds since Epoch, needs to be a string when saving.
+
+		log.Printf("[INFO] Graph ID: %d", Id)
+	}
+
+	// TODO: swapped this around so Id is avail
 	resourceDatadogGraphUpdate(d, meta)
-
-	Id := int(time.Now().Unix())
-
-	d.SetId(strconv.Itoa(Id)) // Use seconds since Epoch, needs to be a string when saving.
-
-	log.Printf("[INFO] Dashboard ID: %d", Id)
 
 	err := resourceDatadogGraphRetrieve(d, meta)
 
@@ -140,11 +164,12 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 
 	// Walk through the graphs
 	for _, g := range dashboard.Graphs {
-		// TODO: Using the title as unique identifier is 'suboptimal'. Interested in different strategies.
-		if g.Title == d.Get("title") {
+		// If it ends with our ID, go:
+		if strings.HasSuffix(g.Title, fmt.Sprintf("(%s)", d.Id())){
 			log.Printf("[DEBUG] Found matching title. Start setting/saving state.")
 			d.Set("dashboard_id", d.Get("dashboard_id"))
-			d.Set("title", g.Title)
+			// Save title to state, without the ID
+			d.Set("title", strings.Replace(g.Title, fmt.Sprintf(" (%s)", d.Id()), "", 1))
 			d.Set("viz", g.Definition.Viz)
 
 			// Create an empty schema to hold all the requests.
@@ -185,13 +210,8 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 		return err
 	}
 
-	log.Printf("[DEBUG] dashboard before added graph: %#v", dashboard)
-
-	log.Printf("[DEBUG] Checking if requests have changed.")
-
 	// Check if there are changes
 	if d.HasChange("request") {
-
 		graph_definition := datadog.Graph{}.Definition
 		graph_requests := datadog.Graph{}.Definition.Requests
 		graph_definition.Viz = d.Get("viz").(string)
@@ -222,29 +242,22 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 				Stacked: m["stacked"].(bool)})
 		}
 
-
 		// Add requests to the graph definition
 		graph_definition.Requests = graph_requests
-		the_graph := datadog.Graph{Title: d.Get("title").(string), Definition: graph_definition}
+		title := d.Get("title").(string) + fmt.Sprintf(" (%s)", d.Id())
+		the_graph := datadog.Graph{Title: title, Definition: graph_definition}
 
 		dashboard.Graphs = append(dashboard.Graphs, the_graph) // Should be done for each
+	}
 
-		log.Printf("[DEBUG] dashboard after adding graph: %#v", dashboard)
+	// Update/commit
+	err = client.UpdateDashboard(dashboard)
 
-		// Update/commit
-		err = client.UpdateDashboard(dashboard)
-
-		if err != nil {
-			return err
-		}
-	} else {
-		log.Printf("[DEBUG] No changes detected, nothing to do here.")
+	if err != nil {
+		return err
 	}
 
 	return nil
-
-	// TODO: still need this?
-	//return resourceDatadogGraphRead(d, meta)
 }
 
 func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error {
@@ -261,8 +274,9 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 	// TODO: Use the set for this.
 	new_graphs := []datadog.Graph{}
 	for _, r := range dashboard.Graphs {
-		// TODO: efficiently test if the are the same for this POC we'll just match on title
-		if r.Title == d.Get("title") {
+		// TODO: Look for our ID in the title (what is the most efficient way in Golang?)
+		if strings.HasSuffix(r.Title, fmt.Sprintf("(%s)", d.Id())) {
+			//if r.Title == d.Get("title") {
 			continue
 		} else {
 			new_graphs = append(new_graphs, r)
