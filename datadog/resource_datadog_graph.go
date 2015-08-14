@@ -77,28 +77,6 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 
 	// TODO: Delete placeholder graph. See https://github.com/ojongerius/terraform-provider-datadog/issues/8
 
-	// TODO:
-	// * In Create; use as ID, the hash of the whole graph.
-	// * When matching in Read/Retrieve; use this hash to see if we found it (yes this is relatively resource intense)
-	// * This does imply that we *must* delete all graphs that are *not* know to us. How do we pull that off?
-	//                    ^^ do we do that by re-posting all graphs on an update?
-	//                    ^^ this is tricky. The graph resources do not know about others graphs, so we will just not
-	//                       find ourselves...
-	//                       The trick used by Terraform is for route tables and routes in it. Which is a different case.
-	// * Profit
-	//
-	// New approach:
-    //
-	// ID in title.
-	//
-	// Difficulty; we can't expect the user to have the ID in their description
-	// 		       but they change detection needs be so that we add be aware of this -Use the ID to identify
-	//                 remove the ID of the diff.
-	//
-	// * Change Read function so find it by the ID, but store the title without the ID
-	// * Change Update function to append the ID when updating the Dashboard at DD
-
-
 	if d.Id() == "" {
 		Id := int(time.Now().Unix())
 		d.SetId(strconv.Itoa(Id)) // Use seconds since Epoch, needs to be a string when saving.
@@ -106,7 +84,6 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 		log.Printf("[INFO] Graph ID: %d", Id)
 	}
 
-	// TODO: swapped this around so Id is avail
 	resourceDatadogGraphUpdate(d, meta)
 
 	err := resourceDatadogGraphRetrieve(d, meta)
@@ -164,11 +141,11 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 
 	// Walk through the graphs
 	for _, g := range dashboard.Graphs {
-		// If it ends with our ID, go:
+		// If it ends with our ID, it's us:
 		if strings.HasSuffix(g.Title, fmt.Sprintf("(%s)", d.Id())){
-			log.Printf("[DEBUG] Found matching title. Start setting/saving state.")
+			log.Printf("[DEBUG] Found matching graph. Start setting/saving state.")
 			d.Set("dashboard_id", d.Get("dashboard_id"))
-			// Save title to state, without the ID
+			// Save title to state, but strip ID
 			d.Set("title", strings.Replace(g.Title, fmt.Sprintf(" (%s)", d.Id()), "", 1))
 			d.Set("viz", g.Definition.Viz)
 
@@ -194,7 +171,7 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 		}
 	}
 
-	// If we are still around we've not found ourselves. Set SetId to empty so Terraform will create the resource for us.
+	// If we are still around we've not found ourselves. Set SetId to empty and Terraform will create the resource for us.
 	d.SetId("")
 
 	return nil
@@ -271,10 +248,9 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	// Build a new slice of graphs, without the nominee to deleted.
-	// TODO: Use the set for this.
 	new_graphs := []datadog.Graph{}
 	for _, r := range dashboard.Graphs {
-		// TODO: Look for our ID in the title (what is the most efficient way in Golang?)
+		// TODO: Find our ID in the title
 		if strings.HasSuffix(r.Title, fmt.Sprintf("(%s)", d.Id())) {
 			//if r.Title == d.Get("title") {
 			continue
