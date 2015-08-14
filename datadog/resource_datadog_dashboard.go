@@ -23,8 +23,6 @@ func resourceDatadogDashboard() *schema.Resource {
 			"id": &schema.Schema{
 				Type:     schema.TypeInt,
 				Computed: true,
-				//Required: true,
-				//ForceNew: true,
 			},
 			"description": &schema.Schema{
 				Type:     schema.TypeString,
@@ -47,17 +45,7 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 	opts := datadog.Dashboard{}
 	opts.Description = d.Get("description").(string)
 	opts.Title = d.Get("title").(string)
-
-	// A dummy placeholder graph (a graph is mandatory)
-	// We cannot get rid of this placeholder graph, so we'll nuke it when applying graphs
-	graph_definition := datadog.Graph{}.Definition
-	graph_definition.Viz = "timeseries"
-	r := datadog.Graph{}.Definition.Requests
-    graph_definition.Requests = append(r, GraphDefintionRequests{Query: "avg:system.mem.free{*}", Stacked: false})
-    graph := datadog.Graph{Title: "Mandatory default graph title", Definition: graph_definition}
-    graphs := []datadog.Graph{}
-    graphs = append(graphs, graph) // Should be done for each
-    opts.Graphs = graphs
+	opts.Graphs = createPlaceholderGraph()
 
 	dashboard , err := client.CreateDashboard(&opts)
 
@@ -127,4 +115,18 @@ func resourceDatadogDashboardRead(d *schema.ResourceData, meta interface{}) erro
 	d.Set("graphs", resp.Graphs)
 
 	return nil
+}
+
+func createPlaceholderGraph() []datadog.Graph	{
+	// Return a dummy placeholder graph -An API call to create or update a dashboard will
+	// fail if there are no graphs
+
+	graph_definition := datadog.Graph{}.Definition
+	graph_definition.Viz = "timeseries"
+	r := datadog.Graph{}.Definition.Requests
+	graph_definition.Requests = append(r, GraphDefintionRequests{Query: "avg:system.mem.free{*}", Stacked: false})
+	graph := datadog.Graph{Title: "Mandatory placeholder graph", Definition: graph_definition}
+	graphs := []datadog.Graph{}
+	graphs = append(graphs, graph) // Should be done for each
+	return graphs
 }
