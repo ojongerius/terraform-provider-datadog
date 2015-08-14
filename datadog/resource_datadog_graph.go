@@ -183,6 +183,9 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 	// Get the dashboard
 	dashboard, err := client.GetDashboard(d.Get("dashboard_id").(int))
 
+	// Make sure the mandatory placeholder is not in there
+	dashboard = buildGraph("Mandatory placeholder graph", dashboard)
+
 	if err != nil {
 		return err
 	}
@@ -247,19 +250,13 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 		return fmt.Errorf("Error retrieving associated dashboard: %s", err)
 	}
 
-	// Build a new slice of graphs, without the nominee to deleted.
-	new_graphs := []datadog.Graph{}
-	for _, r := range dashboard.Graphs {
-		// TODO: Find our ID in the title
-		if strings.HasSuffix(r.Title, fmt.Sprintf("(%s)", d.Id())) {
-			//if r.Title == d.Get("title") {
-			continue
-		} else {
-			new_graphs = append(new_graphs, r)
-		}
-	}
+	// Get the dashboard without the Graph to delete
+	dashboard = buildGraph(fmt.Sprintf("(%s)", d.Id()), dashboard)
 
-	dashboard.Graphs = new_graphs
+	// Test if we need to reinsert the Mandatory graph
+	if len(dashboard.Graphs) < 2 {
+		dashboard.Graphs = createPlaceholderGraph()
+	}
 
 	// Update/commit
 	err = client.UpdateDashboard(dashboard)
@@ -290,4 +287,20 @@ func resourceDatadogRequestHash(v interface{}) int{
 	}
 
 	return hashcode.String(buf.String())
+}
+
+func buildGraph(title string, dashboard *datadog.Dashboard) *datadog.Dashboard {
+	// Build a new slice of graphs, excluding graphs matching title.
+	new_graphs := []datadog.Graph{}
+	for _, r := range dashboard.Graphs {
+		if r.Title == title {
+			continue
+		} else {
+			new_graphs = append(new_graphs, r)
+		}
+	}
+
+	dashboard.Graphs = new_graphs
+
+	return dashboard
 }
