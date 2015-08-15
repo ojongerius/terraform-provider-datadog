@@ -1,7 +1,6 @@
 package datadog
 
 import (
-
 	"fmt"
 	"log"
 	"strconv"
@@ -25,7 +24,7 @@ func resourceDatadogDashboard() *schema.Resource {
 				Computed: true,
 			},
 			"description": &schema.Schema{
-				Type:     schema.TypeString,
+				Type: schema.TypeString,
 				//Computed: true, // TODO: what does this do?
 				ForceNew: true,
 				Optional: true,
@@ -165,9 +164,9 @@ func resourceDatadogDashboardUpdate(d *schema.ResourceData, meta interface{}) er
 			m := variable.(map[string]interface{})
 
 			v = append(v, datadog.TemplateVariable{
-				Name:     m["name"].(string),
-				Prefix:   m["prefix"].(string),
-				Default:  m["prefix"].(string),
+				Name:    m["name"].(string),
+				Prefix:  m["prefix"].(string),
+				Default: m["prefix"].(string),
 			})
 			variables.Add(variable)
 		}

@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/zorkian/go-datadog-api"
 
-	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/helper/hashcode"
+	"github.com/hashicorp/terraform/helper/schema"
 )
 
 // Work around the nested struct in https://github.com/zorkian/go-datadog-api/blob/master/dashboards.go#L16
@@ -30,7 +30,7 @@ func resourceDatadogGraph() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"dashboard_id": &schema.Schema{
-				Type:     schema.TypeInt,
+				Type: schema.TypeInt,
 				//Computed: true,
 				Required: true,
 				ForceNew: true,
@@ -60,7 +60,6 @@ func resourceDatadogGraph() *schema.Resource {
 							Required: true,
 						},
 					},
-
 				},
 				Set: resourceDatadogRequestHash,
 			},

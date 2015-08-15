@@ -1,8 +1,8 @@
 package datadog
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
 
 	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
