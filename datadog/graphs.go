@@ -5,7 +5,7 @@ import (
 )
 
 func createPlaceholderGraph() []datadog.Graph {
-	// Return a dummy placeholder graph.
+    // Return a dummy placeholder graph.
     // This should be used when creating new dashboards, or removing the last
     // in a board.
     // Background; An API call to create or update dashboards (Timeboards) will
