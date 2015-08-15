@@ -5,8 +5,12 @@ import (
 )
 
 func createPlaceholderGraph() []datadog.Graph {
-	// Return a dummy placeholder graph -An API call to create or update a dashboard will
-	// fail if there are no graphs
+	// Return a dummy placeholder graph.
+    // This should be used when creating new dashboards, or removing the last
+    // in a board.
+    // Background; An API call to create or update dashboards (Timeboards) will
+    // fail if it contains zero graphs. This is a bug in the Datadog API,
+    // as dashboards *can* exist without any graphs.
 
 	graph_definition := datadog.Graph{}.Definition
 	graph_definition.Viz = "timeseries"
@@ -14,6 +18,6 @@ func createPlaceholderGraph() []datadog.Graph {
 	graph_definition.Requests = append(r, GraphDefintionRequests{Query: "avg:system.mem.free{*}", Stacked: false})
 	graph := datadog.Graph{Title: "Mandatory placeholder graph", Definition: graph_definition}
 	graphs := []datadog.Graph{}
-	graphs = append(graphs, graph) // Should be done for each
+	graphs = append(graphs, graph)
 	return graphs
 }
