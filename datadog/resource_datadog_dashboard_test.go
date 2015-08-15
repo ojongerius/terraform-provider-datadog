@@ -83,7 +83,7 @@ func testAccCheckDatadogDashboardExists(n string, DashboardResp *datadog.Dashboa
 
 		// TODO: fix this one.
 		//if resp.Dashboard.name != rs.Primary.ID {
-			//return fmt.Errorf("Domain not found")
+		//return fmt.Errorf("Domain not found")
 		//}
 
 		DashboardResp = resp

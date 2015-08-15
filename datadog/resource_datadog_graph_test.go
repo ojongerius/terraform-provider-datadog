@@ -135,7 +135,7 @@ func testAccCheckDatadogGraphExists(n string) resource.TestCheckFunc {
 			return err
 		}
 
-	return nil
+		return nil
 	}
 }
 
