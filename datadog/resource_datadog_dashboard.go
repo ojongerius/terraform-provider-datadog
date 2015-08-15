@@ -16,8 +16,8 @@ func resourceDatadogDashboard() *schema.Resource {
 		Create: resourceDatadogDashboardCreate,
 		Read:   resourceDatadogDashboardRead,
 		Exists: resourceDatadogDashboardExists,
+		Update: resourceDatadogDashboardUpdate,
 		Delete: resourceDatadogDashboardDelete,
-		// TODO: add Update
 
 		Schema: map[string]*schema.Schema{
 			"id": &schema.Schema{
@@ -32,9 +32,10 @@ func resourceDatadogDashboard() *schema.Resource {
 			},
 			"title": &schema.Schema{
 				Type:     schema.TypeString,
-				Required: true,
 				ForceNew: true,
+				Optional: true,
 			},
+			"template_variable": templateVariablesSchema(),
 		},
 	}
 }
@@ -46,6 +47,7 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 	opts.Description = d.Get("description").(string)
 	opts.Title = d.Get("title").(string)
 	opts.Graphs = createPlaceholderGraph()
+	opts.TemplateVariables = []datadog.TemplateVariable{}
 
 	dashboard, err := client.CreateDashboard(&opts)
 
@@ -55,10 +57,10 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 
 	d.SetId(strconv.Itoa(dashboard.Id))
 
-	err = resourceDatadogDashboardRead(d, meta)
+	err = resourceDatadogDashboardUpdate(d, meta)
 
 	if err != nil {
-		return fmt.Errorf("Error retrieving Dashboard: %s", err)
+		return fmt.Errorf("Error updating Dashboard: %s", err)
 	}
 
 	return nil
@@ -114,5 +116,72 @@ func resourceDatadogDashboardRead(d *schema.ResourceData, meta interface{}) erro
 	d.Set("title", resp.Title)
 	d.Set("graphs", resp.Graphs)
 
+	t := &schema.Set{F: templateVariablesHash}
+
+	for _, v := range resp.TemplateVariables {
+
+		m := make(map[string]interface{})
+
+		if v.Name != "" {
+			m["name"] = v.Name
+		}
+		if v.Prefix != "" {
+			m["prefix"] = v.Prefix
+		}
+
+		if v.Default != "" {
+			m["default"] = v.Default
+		}
+
+		t.Add(m)
+	}
+
+	d.Set("template_variable", resp.TemplateVariables)
+
 	return nil
+}
+
+func resourceDatadogDashboardUpdate(d *schema.ResourceData, meta interface{}) error {
+	client := meta.(*datadog.Client)
+
+	opts := datadog.Dashboard{}
+
+	id, _ := strconv.Atoi(d.Id())
+
+	opts.Id = id
+	opts.Description = d.Get("description").(string)
+	opts.Title = d.Get("title").(string)
+	opts.Graphs = createPlaceholderGraph()
+
+	v := []datadog.TemplateVariable{}
+
+	if d.HasChange("template_variable") {
+		o, n := d.GetChange("template_variable")
+
+		variables := o.(*schema.Set).Intersection(n.(*schema.Set))
+
+		nvs := n.(*schema.Set).Difference(o.(*schema.Set))
+		for _, variable := range nvs.List() {
+			m := variable.(map[string]interface{})
+
+			v = append(v, datadog.TemplateVariable{
+				Name:     m["name"].(string),
+				Prefix:   m["prefix"].(string),
+				Default:  m["prefix"].(string),
+			})
+			variables.Add(variable)
+		}
+		d.Set("template_variable", variables)
+	}
+
+	opts.TemplateVariables = v
+
+	err := client.UpdateDashboard(&opts)
+
+	if err != nil {
+		return fmt.Errorf("Error updating Dashboard: %s", err)
+	}
+
+	return nil
+
 }

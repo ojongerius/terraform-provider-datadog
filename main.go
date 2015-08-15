@@ -1,13 +1,13 @@
 package main
 
 import (
-    "github.com/hashicorp/terraform/plugin"
+	"github.com/hashicorp/terraform/plugin"
 
-    "github.com/ojongerius/terraform-provider-datadog/datadog"
+	"github.com/ojongerius/terraform-provider-datadog/datadog"
 )
 
 func main() {
-    plugin.Serve(&plugin.ServeOpts{
-        ProviderFunc: datadog.Provider,
-    })
+	plugin.Serve(&plugin.ServeOpts{
+		ProviderFunc: datadog.Provider,
+	})
 }
