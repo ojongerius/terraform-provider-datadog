@@ -99,7 +99,7 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 		d.Get(fmt.Sprintf("%s.threshold", typeStr)))
 
 	o := datadog.Options{
-		NotifyNoData: d.Get("notify_no_data").(bool),
+		NotifyNoData:    d.Get("notify_no_data").(bool),
 		NoDataTimeframe: d.Get("no_data_timeframe").(int),
 	}
 
@@ -199,9 +199,9 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error {
 	// TODO: add support for this a read function.
 	/* Read - This is called to resync the local state with the remote state.
-	 Terraform guarantees that an existing ID will be set. This ID should be
-	 used to look up the resource. Any remote data should be updated into the
-	 local data. No changes to the remote resource are to be made.
+	Terraform guarantees that an existing ID will be set. This ID should be
+	used to look up the resource. Any remote data should be updated into the
+	local data. No changes to the remote resource are to be made.
 	*/
 
 	return nil
@@ -233,7 +233,6 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 	if i_err != nil {
 		return i_err
 	}
-
 
 	client := meta.(*datadog.Client)
 

@@ -2,8 +2,8 @@ package datadog
 
 import (
 	"fmt"
-	"testing"
 	"strconv"
+	"testing"
 
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
@@ -12,6 +12,28 @@ import (
 
 func TestAccDatadogDashboard_Basic(t *testing.T) {
 	var resp datadog.Dashboard
+
+	testTemplateVariables := func(*terraform.State) error {
+		var resp datadog.Dashboard
+
+		if len(resp.TemplateVariables) != 2 {
+			return fmt.Errorf("bad template variables: %#v", resp.TemplateVariables)
+		}
+
+		variables := make(map[string]datadog.TemplateVariable)
+		for _, r := range resp.TemplateVariables {
+			variables[r.Name] = r
+		}
+
+		if _, ok := variables["host1"]; !ok {
+			return fmt.Errorf("bad template variables: %#v", resp.TemplateVariables)
+		}
+		if _, ok := variables["host2"]; !ok {
+			return fmt.Errorf("bad template variables: %#v", resp.TemplateVariables)
+		}
+
+		return nil
+	}
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -26,10 +48,13 @@ func TestAccDatadogDashboard_Basic(t *testing.T) {
 						"datadog_dashboard.foo", "title", "title for dashboard foo"),
 					resource.TestCheckResourceAttr(
 						"datadog_dashboard.foo", "description", "description for dashboard foo"),
+					testTemplateVariables,
+					// TODO: Add tests to verify change
 				),
 			},
 		},
 	})
+
 }
 
 func testAccCheckDatadogDashboardDestroy(s *terraform.State) error {
@@ -96,5 +121,15 @@ const testAccCheckDatadogDashboardConfig_basic = `
 resource "datadog_dashboard" "foo" {
        description = "description for dashboard foo"
        title = "title for dashboard foo"
+       template_variable {
+		name = "host1"
+		prefix = "host"
+		default = "host:foo.example.com"
+       }
+       template_variable {
+		name = "host2"
+		prefix = "host"
+		default = "host:bar.example.com"
+       }
    }
 `
