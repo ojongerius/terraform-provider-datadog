@@ -79,7 +79,7 @@ func testAccCheckDatadogMonitorDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckDatadogMonitorExists(n string) resource.TestCheckFunc  {
+func testAccCheckDatadogMonitorExists(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccProvider.Meta().(*datadog.Client)
 		for _, rs := range s.RootModule().Resources {

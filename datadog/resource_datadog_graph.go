@@ -142,7 +142,7 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 	// Walk through the graphs
 	for _, g := range dashboard.Graphs {
 		// If it ends with our ID, it's us:
-		if strings.HasSuffix(g.Title, fmt.Sprintf("(%s)", d.Id())){
+		if strings.HasSuffix(g.Title, fmt.Sprintf("(%s)", d.Id())) {
 			log.Printf("[DEBUG] Found matching graph. Start setting/saving state.")
 			d.Set("dashboard_id", d.Get("dashboard_id"))
 			// Save title to state, but strip ID
@@ -274,15 +274,15 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 	return nil
 }
 
-func resourceDatadogRequestHash(v interface{}) int{
+func resourceDatadogRequestHash(v interface{}) int {
 	var buf bytes.Buffer
 	m := v.(map[string]interface{})
 
-	if v, ok := m["query"];  ok {
+	if v, ok := m["query"]; ok {
 		buf.WriteString(fmt.Sprintf("%s-", v.(string)))
 	}
 
-	if v, ok := m["stacked"];  ok {
+	if v, ok := m["stacked"]; ok {
 		buf.WriteString(fmt.Sprintf("%t-", v.(bool)))
 	}
 

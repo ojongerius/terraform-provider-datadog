@@ -3,7 +3,7 @@ package datadog
 import (
 	"log"
 
-    "github.com/zorkian/go-datadog-api"
+	"github.com/zorkian/go-datadog-api"
 )
 
 type Config struct {

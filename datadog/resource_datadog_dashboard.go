@@ -47,7 +47,7 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 	opts.Title = d.Get("title").(string)
 	opts.Graphs = createPlaceholderGraph()
 
-	dashboard , err := client.CreateDashboard(&opts)
+	dashboard, err := client.CreateDashboard(&opts)
 
 	if err != nil {
 		return fmt.Errorf("Error creating Dashboard: %s", err)

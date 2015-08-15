@@ -91,12 +91,12 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 	tags := d.Get("metric_tags").(string)
 	operator := d.Get("operator").(string)
 	query := fmt.Sprintf("%s(%s):%s:%s{%s} %s %s", timeAggr,
-		                                           timeWindow,
-					                               spaceAggr,
-		                                           metric,
-												   tags,
-		                                           operator,
-		                                           d.Get(fmt.Sprintf("%s.threshold", typeStr)))
+		timeWindow,
+		spaceAggr,
+		metric,
+		tags,
+		operator,
+		d.Get(fmt.Sprintf("%s.threshold", typeStr)))
 
 	o := datadog.Options{
 		NotifyNoData: d.Get("notify_no_data").(bool),
