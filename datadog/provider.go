@@ -37,8 +37,8 @@ func Provider() terraform.ResourceProvider {
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
 	config := Config{
-		api_key: d.Get("api_key").(string),
-		app_key: d.Get("app_key").(string),
+		APIKey: d.Get("api_key").(string),
+		APPKey: d.Get("app_key").(string),
 	}
 
 	log.Println("[INFO] Initializing Datadog client")

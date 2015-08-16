@@ -6,6 +6,8 @@ env:
 install:
   - make updatedeps
 script:
+  - go get -u github.com/golang/lint/golint
+  - golint ./...
   - make test
   - test `gofmt -l . | wc -l` = 0
 before_install:

@@ -18,7 +18,7 @@ func TestAccDatadogMonitor_Basic(t *testing.T) {
 		CheckDestroy: testAccCheckDatadogMonitorDestroy,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: testAccCheckDatadogMonitorConfig_basic,
+				Config: testAccCheckDatadogMonitorConfigBasic,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDatadogMonitorExists("datadog_monitor.bar"),
 					resource.TestCheckResourceAttr(
@@ -55,13 +55,13 @@ func testAccCheckDatadogMonitorDestroy(s *terraform.State) error {
 				fmt.Printf("Could not parse IDs. %s", v)
 				return fmt.Errorf("Id not set.")
 			}
-			Id, i_err := strconv.Atoi(v)
+			ID, iErr := strconv.Atoi(v)
 
-			if i_err != nil {
-				fmt.Printf("Received error converting string %s", i_err)
-				return i_err
+			if iErr != nil {
+				fmt.Printf("Received error converting string %s", iErr)
+				return iErr
 			}
-			_, err := client.GetMonitor(Id)
+			_, err := client.GetMonitor(ID)
 			if err != nil {
 				// 404 is what we want, anything else is an error. Sadly our API will return a string like so:
 				// return errors.New("API error: " + resp.Status)
@@ -88,12 +88,12 @@ func testAccCheckDatadogMonitorExists(n string) resource.TestCheckFunc {
 					fmt.Printf("Could not parse IDs. %s", v)
 					return fmt.Errorf("Id not set.")
 				}
-				Id, i_err := strconv.Atoi(v)
+				ID, iErr := strconv.Atoi(v)
 
-				if i_err != nil {
-					return fmt.Errorf("Received error converting string %s", i_err)
+				if iErr != nil {
+					return fmt.Errorf("Received error converting string %s", iErr)
 				}
-				_, err := client.GetMonitor(Id)
+				_, err := client.GetMonitor(ID)
 				if err != nil {
 					return fmt.Errorf("Received an error retrieving monitor %s", err)
 				}
@@ -103,7 +103,7 @@ func testAccCheckDatadogMonitorExists(n string) resource.TestCheckFunc {
 	}
 }
 
-const testAccCheckDatadogMonitorConfig_basic = `
+const testAccCheckDatadogMonitorConfigBasic = `
 resource "datadog_monitor" "foo" {
   name = "name for monitor foo"
   message = "description for monitor foo"
