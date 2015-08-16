@@ -8,5 +8,7 @@ install:
   - make updatedeps
 script:
   - go test -v ./...
+before_install:
+   - go get github.com/mitchellh/gox
 after_success:
   - make bin
