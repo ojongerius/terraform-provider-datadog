@@ -296,7 +296,7 @@ func buildGraph(title string, dashboard *datadog.Dashboard) *datadog.Dashboard {
 		if r.Title == title {
 			continue
 		} else {
-			 g = append(g, r)
+			g = append(g, r)
 		}
 	}
 
