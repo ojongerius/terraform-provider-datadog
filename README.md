@@ -1,5 +1,5 @@
 [![Build
-status](//travis-ci.org/ojongerius/terraform-provider-datadog.svg)](https://travis-ci.org/ojongerius/terraform-provider-datadog)
+status](https://travis-ci.org/ojongerius/terraform-provider-datadog.svg)](https://travis-ci.org/ojongerius/terraform-provider-datadog)
 
 # terraform-provider-datadog
 
