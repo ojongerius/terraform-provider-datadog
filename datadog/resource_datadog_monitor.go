@@ -117,16 +117,16 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
-	w, w_err := client.CreateMonitor(buildMonitorStruct(d, "warning"))
+	w, err := client.CreateMonitor(buildMonitorStruct(d, "warning"))
 
-	if w_err != nil {
-		return fmt.Errorf("error creating warning: %s", w_err)
+	if err != nil {
+		return fmt.Errorf("error creating warning: %s", err)
 	}
 
-	c, c_err := client.CreateMonitor(buildMonitorStruct(d, "critical"))
+	c, cErr := client.CreateMonitor(buildMonitorStruct(d, "critical"))
 
-	if c_err != nil {
-		return fmt.Errorf("error creating warning: %s", c_err)
+	if cErr != nil {
+		return fmt.Errorf("error creating warning: %s", cErr)
 	}
 
 	log.Printf("[DEBUG] Saving IDs: %s__%s", strconv.Itoa(w.Id), strconv.Itoa(c.Id))
@@ -143,13 +143,13 @@ func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) erro
 		if v == "" {
 			return fmt.Errorf("Id not set.")
 		}
-		Id, i_err := strconv.Atoi(v)
+		ID, iErr := strconv.Atoi(v)
 
-		if i_err != nil {
-			return i_err
+		if iErr != nil {
+			return iErr
 		}
 
-		err := client.DeleteMonitor(Id)
+		err := client.DeleteMonitor(ID)
 		if err != nil {
 			return err
 		}
@@ -169,13 +169,13 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 			log.Printf("[DEBUG] Could not parse IDs: %s", v)
 			return false, fmt.Errorf("Id not set.")
 		}
-		Id, i_err := strconv.Atoi(v)
+		ID, iErr := strconv.Atoi(v)
 
-		if i_err != nil {
-			log.Printf("[DEBUG] Received error converting string: %s", i_err)
-			return false, i_err
+		if iErr != nil {
+			log.Printf("[DEBUG] Received error converting string: %s", iErr)
+			return false, iErr
 		}
-		_, err := client.GetMonitor(Id)
+		_, err := client.GetMonitor(ID)
 		if err != nil {
 			if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
 				log.Printf("[DEBUG] monitor does not exist: %s", err)
@@ -222,36 +222,36 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 		return fmt.Errorf("Id not set.")
 	}
 
-	warningId, i_err := strconv.Atoi(wID)
+	warningID, iErr := strconv.Atoi(wID)
 
-	if i_err != nil {
-		return i_err
+	if iErr != nil {
+		return iErr
 	}
 
-	criticalId, i_err := strconv.Atoi(cID)
+	criticalID, iErr := strconv.Atoi(cID)
 
-	if i_err != nil {
-		return i_err
+	if iErr != nil {
+		return iErr
 	}
 
 	client := meta.(*datadog.Client)
 
-	warning_body := buildMonitorStruct(d, "warning")
-	critical_body := buildMonitorStruct(d, "critical")
+	warningBody := buildMonitorStruct(d, "warning")
+	criticalBody := buildMonitorStruct(d, "critical")
 
-	warning_body.Id = warningId
-	critical_body.Id = criticalId
+	warningBody.Id = warningID
+	criticalBody.Id = criticalID
 
-	w_err := client.UpdateMonitor(warning_body)
+	wErr := client.UpdateMonitor(warningBody)
 
-	if w_err != nil {
-		return fmt.Errorf("error updating warning: %s", w_err.Error())
+	if wErr != nil {
+		return fmt.Errorf("error updating warning: %s", wErr.Error())
 	}
 
-	c_err := client.UpdateMonitor(critical_body)
+	cErr := client.UpdateMonitor(criticalBody)
 
-	if c_err != nil {
-		return fmt.Errorf("error updating critical: %s", c_err.Error())
+	if cErr != nil {
+		return fmt.Errorf("error updating critical: %s", cErr.Error())
 	}
 
 	return nil

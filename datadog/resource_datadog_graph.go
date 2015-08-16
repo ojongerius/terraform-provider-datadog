@@ -14,7 +14,8 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-// Work around the nested struct in https://github.com/zorkian/go-datadog-api/blob/master/dashboards.go#L16
+// GraphDefintionRequests works around the nested struct in
+// https://github.com/zorkian/go-datadog-api/blob/master/dashboards.go#L16
 type GraphDefintionRequests struct {
 	Query   string `json:"q"`
 	Stacked bool   `json:"stacked"`
@@ -77,10 +78,10 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 	// TODO: Delete placeholder graph. See https://github.com/ojongerius/terraform-provider-datadog/issues/8
 
 	if d.Id() == "" {
-		Id := int(time.Now().Unix())
-		d.SetId(strconv.Itoa(Id)) // Use seconds since Epoch, needs to be a string when saving.
+		ID := int(time.Now().Unix())
+		d.SetId(strconv.Itoa(ID)) // Use seconds since Epoch, needs to be a string when saving.
 
-		log.Printf("[INFO] Graph ID: %d", Id)
+		log.Printf("[INFO] Graph ID: %d", ID)
 	}
 
 	resourceDatadogGraphUpdate(d, meta)
@@ -132,14 +133,14 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 	client := meta.(*datadog.Client)
 
 	// Get the dashboard(s)
-	dashboard, err := client.GetDashboard(d.Get("dashboard_id").(int))
+	dashBoard, err := client.GetDashboard(d.Get("dashboard_id").(int))
 
 	if err != nil {
 		return fmt.Errorf("Error retrieving associated dashboard: %s", err)
 	}
 
 	// Walk through the graphs
-	for _, g := range dashboard.Graphs {
+	for _, g := range dashBoard.Graphs {
 		// If it ends with our ID, it's us:
 		if strings.HasSuffix(g.Title, fmt.Sprintf("(%s)", d.Id())) {
 			log.Printf("[DEBUG] Found matching graph. Start setting/saving state.")
@@ -191,9 +192,9 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 
 	// Check if there are changes
 	if d.HasChange("request") {
-		graph_definition := datadog.Graph{}.Definition
-		graph_requests := datadog.Graph{}.Definition.Requests
-		graph_definition.Viz = d.Get("viz").(string)
+		graphDefinition := datadog.Graph{}.Definition
+		graphRequests := datadog.Graph{}.Definition.Requests
+		graphDefinition.Viz = d.Get("viz").(string)
 
 		log.Printf("[DEBUG] Request has changed.")
 		o, n := d.GetChange("request")
@@ -217,16 +218,16 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 			// Add the request
 			log.Printf("[DEBUG] Adding graph query %s", m["query"].(string))
 			log.Printf("[DEBUG] Adding graph stacked %t", m["stacked"].(bool))
-			graph_requests = append(graph_requests, GraphDefintionRequests{Query: m["query"].(string),
+			graphRequests = append(graphRequests, GraphDefintionRequests{Query: m["query"].(string),
 				Stacked: m["stacked"].(bool)})
 		}
 
 		// Add requests to the graph definition
-		graph_definition.Requests = graph_requests
+		graphDefinition.Requests = graphRequests
 		title := d.Get("title").(string) + fmt.Sprintf(" (%s)", d.Id())
-		the_graph := datadog.Graph{Title: title, Definition: graph_definition}
+		g := datadog.Graph{Title: title, Definition: graphDefinition}
 
-		dashboard.Graphs = append(dashboard.Graphs, the_graph) // Should be done for each
+		dashboard.Graphs = append(dashboard.Graphs, g) // Should be done for each
 	}
 
 	// Update/commit
@@ -290,16 +291,16 @@ func resourceDatadogRequestHash(v interface{}) int {
 
 func buildGraph(title string, dashboard *datadog.Dashboard) *datadog.Dashboard {
 	// Build a new slice of graphs, excluding graphs matching title.
-	new_graphs := []datadog.Graph{}
+	g := []datadog.Graph{}
 	for _, r := range dashboard.Graphs {
 		if r.Title == title {
 			continue
 		} else {
-			new_graphs = append(new_graphs, r)
+			 g = append(g, r)
 		}
 	}
 
-	dashboard.Graphs = new_graphs
+	dashboard.Graphs = g
 
 	return dashboard
 }

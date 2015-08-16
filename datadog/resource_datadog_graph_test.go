@@ -17,7 +17,7 @@ func TestAccDatadogGraph_Basic(t *testing.T) {
 		CheckDestroy: testAccCheckDatadogGraphDestroy,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: testAccCheckDatadogGraphConfig_basic,
+				Config: testAccCheckDatadogGraphConfigBasic,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDatadogGraphExists("datadog_graph.bar"),
 					// TODO: Test request attributes
@@ -42,14 +42,14 @@ func testAccCheckDatadogGraphDestroy(s *terraform.State) error {
 			continue
 		}
 
-		dashboard_id, err := getGraphDashboard(s, rs)
+		d, err := getGraphDashboard(s, rs)
 
 		if err != nil {
 			return err
 		}
 
 		// See if the graph with our title is still in the dashboard
-		_, err = getGraphFromDashboard(dashboard_id, rs.Primary.Attributes["title"])
+		_, err = getGraphFromDashboard(d, rs.Primary.Attributes["title"])
 
 		if err != nil {
 			return err
@@ -89,18 +89,18 @@ func getGraphFromDashboard(id, title string) (datadog.Graph, error) {
 
 	graph := datadog.Graph{}
 
-	IdInt, int_err := strconv.Atoi(id)
-	if int_err == nil {
-		return graph, int_err
+	i, err := strconv.Atoi(id)
+	if err == nil {
+		return graph, err
 	}
 
-	dashboard, err := client.GetDashboard(IdInt)
+	d, err := client.GetDashboard(i)
 
 	if err != nil {
 		return graph, fmt.Errorf("Error retrieving associated dashboard: %s", err)
 	}
 
-	for _, g := range dashboard.Graphs {
+	for _, g := range d.Graphs {
 		if g.Title != title {
 			continue
 		}
@@ -122,14 +122,14 @@ func testAccCheckDatadogGraphExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf("No ID is set")
 		}
 
-		dashboard_id, err := getGraphDashboard(s, rs)
+		i, err := getGraphDashboard(s, rs)
 
 		if err != nil {
 			return err
 		}
 
 		// See if our graph is in the dashboard
-		_, err = getGraphFromDashboard(dashboard_id, rs.Primary.Attributes["title"])
+		_, err = getGraphFromDashboard(i, rs.Primary.Attributes["title"])
 
 		if err != nil {
 			return err
@@ -139,7 +139,7 @@ func testAccCheckDatadogGraphExists(n string) resource.TestCheckFunc {
 	}
 }
 
-const testAccCheckDatadogGraphConfig_basic = `
+const testAccCheckDatadogGraphConfigBasic = `
 resource "datadog_dashboard" "foo" {
 	description = "description for dashboard foo"
 	title = "title for dashboard foo"

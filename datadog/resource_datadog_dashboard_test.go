@@ -41,7 +41,7 @@ func TestAccDatadogDashboard_Basic(t *testing.T) {
 		CheckDestroy: testAccCheckDatadogDashboardDestroy,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: testAccCheckDatadogDashboardConfig_basic,
+				Config: testAccCheckDatadogDashboardConfigBasic,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDatadogDashboardExists("datadog_dashboard.foo", &resp),
 					resource.TestCheckResourceAttr(
@@ -65,12 +65,12 @@ func testAccCheckDatadogDashboardDestroy(s *terraform.State) error {
 			continue
 		}
 
-		IdInt, int_err := strconv.Atoi(rs.Primary.ID)
-		if int_err == nil {
-			return int_err
+		intID, intErr := strconv.Atoi(rs.Primary.ID)
+		if intErr == nil {
+			return intErr
 		}
 
-		_, err := client.GetDashboard(IdInt)
+		_, err := client.GetDashboard(intID)
 
 		if err == nil {
 			return fmt.Errorf("Dashboard still exists")
@@ -94,13 +94,13 @@ func testAccCheckDatadogDashboardExists(n string, DashboardResp *datadog.Dashboa
 
 		client := testAccProvider.Meta().(*datadog.Client)
 
-		IntId, int_err := strconv.Atoi(rs.Primary.ID)
+		intID, intErr := strconv.Atoi(rs.Primary.ID)
 
-		if int_err != nil {
-			return int_err
+		if intErr != nil {
+			return intErr
 		}
 
-		resp, err := client.GetDashboard(IntId)
+		resp, err := client.GetDashboard(intID)
 
 		if err != nil {
 			return err
@@ -117,7 +117,7 @@ func testAccCheckDatadogDashboardExists(n string, DashboardResp *datadog.Dashboa
 	}
 }
 
-const testAccCheckDatadogDashboardConfig_basic = `
+const testAccCheckDatadogDashboardConfigBasic = `
 resource "datadog_dashboard" "foo" {
        description = "description for dashboard foo"
        title = "title for dashboard foo"
