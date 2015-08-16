@@ -28,7 +28,7 @@ Download builds for Darwin, Linux and Windows from the [releases page](https://g
 
 Example configuration:
 
-``` json 
+``` HCL
 resource "datadog_dashboard" "foo" {
     description = "description for dashboard foo"
     title = "title for dashboard foo bar"
@@ -75,7 +75,7 @@ Example configuration:
 
 Example configuration:
 
-``` json
+``
 resource "datadog_dashboard" "foo" {
     description = "description for dashboard foo"
     title = "title for dashboard foo bar"
