@@ -28,7 +28,7 @@ Download builds for Darwin, Linux and Windows from the [releases page](https://g
 
 Example configuration:
 
-``` json 
+``` HCL
 resource "datadog_dashboard" "foo" {
     description = "description for dashboard foo"
     title = "title for dashboard foo bar"
@@ -48,7 +48,7 @@ resource "datadog_dashboard" "foo" {
 
 Example configuration:
 
-``` json
+``` HCL
    resource "datadog_graph" "bar" {
        title = "Average Memory Free bar"
        dashboard_id = "${datadog_dashboard.foo.id}"
@@ -75,7 +75,7 @@ Example configuration:
 
 Example configuration:
 
-``` json
+``` HCL
 resource "datadog_dashboard" "foo" {
     description = "description for dashboard foo"
     title = "title for dashboard foo bar"
@@ -119,7 +119,7 @@ resource "datadog_monitor" "baz" {
 
 ### Example configuration combined
 
-``` json
+``` HCL
    resource "datadog_graph" "bar" {
        title = "Average Memory Free bar"
        dashboard_id = "${datadog_dashboard.foo.id}"
