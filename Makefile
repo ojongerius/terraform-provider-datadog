@@ -6,6 +6,15 @@ default: test
 bin: generate
 	@sh -c "'$(CURDIR)/scripts/build.sh'"
 
+# get dependencies
+updatedeps:
+	go list ./... \
+        | xargs go list -f '{{join .Deps "\n"}}' \
+		| grep -v terraform-provider-datadog \
+        | grep -v '/internal/' \
+        | sort -u \
+        | xargs go get -f -u -v
+
 # test runs the unit tests and vets the code
 test: generate
 	TF_ACC= go test $(TEST) $(TESTARGS) -timeout=30s -parallel=4
