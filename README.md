@@ -5,11 +5,11 @@ status](https://travis-ci.org/ojongerius/terraform-provider-datadog.svg)](https:
 
 A [Terraform](https://github.com/hashicorp/terraform) plugin that provides resources for [Datadog](https://www.datadoghq.com/).
 
-Currently supports 3 resources:
+It currently supports 3 resources:
 
-* Timeboards: datadog_dashboard
-* Graphs: datadog_graph
-* Monitors: datadog_monitor -originally contributed by [Vincenzo
+* *Timeboards*: datadog_dashboard
+* *Graphs*: datadog_graph
+* *Monitors*: datadog_monitor -originally contributed by [Vincenzo
   Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio).
 
 Feel free to open new [issues](https://github.com/ojongerius/terraform-provider-datadog/issues) for extra resources or bugs you find. After finishing
@@ -20,21 +20,35 @@ Want to contribute? Find a resource you want to add or work on an issue over
 [here]( 
 https://github.com/ojongerius/terraform-provider-datadog/issues).
 
-## Dashboards
+##  Download
+Download builds for Darwin, Linux and Windows from the [releases page](https://github.com/ojongerius/terraform-provider-datadog/releases/).
+
+## Resources
+### Dashboards
 
 Example configuration:
 
+``` json 
+resource "datadog_dashboard" "foo" {
+    description = "description for dashboard foo"
+    title = "title for dashboard foo bar"
+    template_variable {
+       name = "bar"
+       prefix = "host"
+       default = "host:bar.example.com"
+    }
+    template_variable {
+       name = "baz"
+       prefix = "host"
+       default = "host:baz.example.com"
+    }
+}
 ```
-   resource "datadog_dashboard" "foo" {
-       description = "description for dashboard foo"
-       title = "title for dashboard foo"
-   }
-```
-## Graphs
+### Graphs
 
 Example configuration:
 
-```
+``` json
    resource "datadog_graph" "bar" {
        title = "Average Memory Free bar"
        dashboard_id = "${datadog_dashboard.foo.id}"
@@ -57,45 +71,55 @@ Example configuration:
    }
 ```
 
-## Monitors
+### Monitors
 
 Example configuration:
 
+``` json
+resource "datadog_dashboard" "foo" {
+    description = "description for dashboard foo"
+    title = "title for dashboard foo bar"
+    template_variable {
+        name = "bar"
+        prefix = "host"
+        default = "host:bar.example.com"
+    }
+    template_variable {
+        name = "baz"
+        prefix = "host"
+        default = "host:baz.example.com"
+    }
+}
+
+resource "datadog_monitor" "baz" {
+    name = "baz"
+    message = "Description of monitor baz"
+
+    metric = "aws.ec2.cpu"
+    metric_tags = "*" // one or more comma separated tags (defaults to *)
+
+    time_aggr = "avg" // avg, sum, max, min, change, or pct_change
+    time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
+    space_aggr = "avg" // avg, sum, min, or max
+    operator = "<" // <, <=, >, >=, ==, or !=
+
+    warning {
+        threshold = 0
+        notify = "@hipchat-<name>"
+    }
+
+    critical {
+        threshold = 0
+        notify = "@pagerduty"
+    }
+
+    notify_no_data = false // Optional, defaults to true
+}
 ```
-   resource "datadog_monitor" "baz" {
-     name = "baz"
-     message = "Description of monitor baz"
 
-     metric = "aws.ec2.cpu"
-     metric_tags = "*" // one or more comma separated tags (defaults to *)
+### Example configuration combined
 
-     time_aggr = "avg" // avg, sum, max, min, change, or pct_change
-     time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
-     space_aggr = "avg" // avg, sum, min, or max
-     operator = "<" // <, <=, >, >=, ==, or !=
-
-     warning {
-       threshold = 0
-       notify = "@hipchat-<name>"
-     }
-
-     critical {
-       threshold = 0
-       notify = "@pagerduty"
-     }
-
-     //notify_no_data = false // Optional, defaults to true
-   }
-```
-
-## Example configuration combined
-
-```
-   resource "datadog_dashboard" "foo" {
-       description = "description for dashboard foo"
-       title = "title for dashboard foo"
-   }
-
+``` json
    resource "datadog_graph" "bar" {
        title = "Average Memory Free bar"
        dashboard_id = "${datadog_dashboard.foo.id}"
@@ -249,6 +273,7 @@ Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 ## Development
 ### Running tests
 
+#### Simple tests
 ```sh
 > make test
 go generate ./...
@@ -259,10 +284,17 @@ go tool vet -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc
 -printf -rangeloops -shift -structtags -unsafeptr .
 ```
 
-Or run tests in acceptance by running `make testacc`.
+#### Acceptance tests
+
+Much more extensive but need a valide Datadog API and APP key.
+
+These tests will create and destroy real resources.
+
+```sh
+make testacc
+```
 
 ### Building
-
 Building defaults to the platform you run on, and depends on
 [gox](https://github.com/mitchellh/gox). If you do not have it installed:
 
