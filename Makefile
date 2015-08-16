@@ -6,6 +6,9 @@ default: test
 bin: generate
 	@sh -c "'$(CURDIR)/scripts/build.sh'"
 
+ci: generate
+	@sh -c "'$(CURDIR)/scripts/build-ci.sh'"
+
 # get dependencies
 updatedeps:
 	go list ./... \
