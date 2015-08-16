@@ -14,7 +14,10 @@ if [ $? != 0 ] ; then
 fi
 
 echo "Looking for Terraform install"
-TERRAFORM_LOC=$(dirname $(which terraform))
+
+TERRAFORM=$(which terraform)
+
+[ $TERRAFORM ] && TERRAFORM_LOC=$(dirname ${TERRAFORM})
 
 if [ $TERRAFORM_LOC  ] ; then
     DEST_PATH=$TERRAFORM_LOC
