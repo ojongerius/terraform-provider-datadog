@@ -4,7 +4,9 @@ go:
   - tip
 env:
   - "PATH=/home/travis/gopath/bin:$PATH"
-install:
+before-install:
   - make updatedeps
 script:
   - go test -v ./...
+after_success:
+  - make bin
