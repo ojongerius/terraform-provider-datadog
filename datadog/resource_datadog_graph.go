@@ -21,6 +21,8 @@ type GraphDefintionRequests struct {
 	Stacked bool   `json:"stacked"`
 }
 
+// resourceDatadogGraph is a Datadog graph resource. It is a virtual resource as there are no autonomous graphs in
+// Datadog.
 func resourceDatadogGraph() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogGraphCreate,
@@ -70,6 +72,7 @@ func resourceDatadogGraph() *schema.Resource {
 	}
 }
 
+// resourceDatadogGraphCreate creates a graph on associated dashboard(s).
 func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error {
 	// This should create graphs associated with dashboards.
 	// it's a virtual resource, a la "resource_vpn_connection_route"
@@ -95,6 +98,7 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 	return nil
 }
 
+// resourceDatadogGraphExists verifies is a graph exists.
 func resourceDatadogGraphExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	client := meta.(*datadog.Client)
 
@@ -119,6 +123,7 @@ func resourceDatadogGraphExists(d *schema.ResourceData, meta interface{}) (bool,
 	return true, nil
 }
 
+// resourceDatadogGraphRead synchronises Datadog and local state. It uses resourceDatadogGraphRetreive for this.
 func resourceDatadogGraphRead(d *schema.ResourceData, meta interface{}) error {
 	err := resourceDatadogGraphRetrieve(d, meta)
 
@@ -129,6 +134,7 @@ func resourceDatadogGraphRead(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
+// resourceDatadogGraphRetreive synchronises Datadog and local state.
 func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
@@ -177,6 +183,7 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 	return nil
 }
 
+// resourceDatadogGraphUpdate updates a graph.
 func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
@@ -240,6 +247,7 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 	return nil
 }
 
+// resourceDatadogGraphDelete deletes a graph.
 func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
@@ -274,6 +282,7 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 	return nil
 }
 
+// resourceDatadogRequestHash creates a hash, used by schema.TypeSet to detect change.
 func resourceDatadogRequestHash(v interface{}) int {
 	var buf bytes.Buffer
 	m := v.(map[string]interface{})
@@ -289,6 +298,8 @@ func resourceDatadogRequestHash(v interface{}) int {
 	return hashcode.String(buf.String())
 }
 
+// buildGraph can be used to create a placeholder graph, used to create new dashboards, as the Datadog API does not
+// support creation of dashboards without graphs.
 func buildGraph(title string, dashboard *datadog.Dashboard) *datadog.Dashboard {
 	// Build a new slice of graphs, excluding graphs matching title.
 	g := []datadog.Graph{}

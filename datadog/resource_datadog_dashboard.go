@@ -10,6 +10,7 @@ import (
 	"github.com/zorkian/go-datadog-api"
 )
 
+// resourceDatadogDashboard is a Datadog dashboard resource.
 func resourceDatadogDashboard() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogDashboardCreate,
@@ -39,6 +40,7 @@ func resourceDatadogDashboard() *schema.Resource {
 	}
 }
 
+// resourceDatadogDashboardCreate creates a new dashboard.
 func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
@@ -65,6 +67,7 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 	return nil
 }
 
+// resourceDatadogDashboardCreate deletes an existing dashboard.
 func resourceDatadogDashboardDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
@@ -81,6 +84,7 @@ func resourceDatadogDashboardDelete(d *schema.ResourceData, meta interface{}) er
 	return nil
 }
 
+// resourceDatadogDashboardExists verifies a dashboard exists.
 func resourceDatadogDashboardExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	client := meta.(*datadog.Client)
 
@@ -99,6 +103,7 @@ func resourceDatadogDashboardExists(d *schema.ResourceData, meta interface{}) (b
 	return true, nil
 }
 
+// resourceDatadogDashboardRead synchronises Datadog and local state.
 func resourceDatadogDashboardRead(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
@@ -140,6 +145,7 @@ func resourceDatadogDashboardRead(d *schema.ResourceData, meta interface{}) erro
 	return nil
 }
 
+// resourceDatadogDashboardUpdate updates an existing dashboard.
 func resourceDatadogDashboardUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 

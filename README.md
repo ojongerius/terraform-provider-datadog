@@ -1,3 +1,4 @@
+[![GoDoc](http://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/ojongerius/terraform-provider-datadog/datadog)
 [![Build
 status](https://travis-ci.org/ojongerius/terraform-provider-datadog.svg)](https://travis-ci.org/ojongerius/terraform-provider-datadog)
 
