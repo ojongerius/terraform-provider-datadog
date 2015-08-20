@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
+// resourceDatadogMonitor is a Datadog monitor resource
 func resourceDatadogMonitor() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogMonitorCreate,
@@ -80,7 +81,7 @@ func resourceDatadogMonitor() *schema.Resource {
 	}
 }
 
-// TODO: Rename this one?
+// buildMonitorStruct returns a monitor struct
 func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor {
 	name := d.Get("name").(string)
 	message := d.Get("message").(string)
@@ -114,6 +115,7 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 	return &m
 }
 
+// resourceDatadogMonitorCreate creates a monitor.
 func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
@@ -136,6 +138,7 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 	return nil
 }
 
+// resourceDatadogMonitorDelete deletes a monitor.
 func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
@@ -157,6 +160,7 @@ func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) erro
 	return nil
 }
 
+// resourceDatadogMonitorExists verifies a monitor exists.
 func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b bool, e error) {
 	// Exists - This is called to verify a resource still exists. It is called prior to Read,
 	// and lowers the burden of Read to be able to assume the resource exists.
@@ -196,6 +200,7 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 	return true, nil
 }
 
+// resourceDatadogMonitorRead synchronises Datadog and local state .
 func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error {
 	// TODO: add support for this a read function.
 	/* Read - This is called to resync the local state with the remote state.
@@ -207,6 +212,7 @@ func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error 
 	return nil
 }
 
+// resourceDatadogMonitorUpdate updates a monitor.
 func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] running update.")
 

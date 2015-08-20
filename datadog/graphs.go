@@ -4,6 +4,8 @@ import (
 	"github.com/zorkian/go-datadog-api"
 )
 
+// createPlaceholderGraph returns a slice with one mandatory graph. Useful to create new dashboard, as the API
+// mandates one or more graphs.
 func createPlaceholderGraph() []datadog.Graph {
 	// Return a dummy placeholder graph.
 	// This should be used when creating new dashboards, or removing the last

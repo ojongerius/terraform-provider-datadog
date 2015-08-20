@@ -34,6 +34,7 @@ func Provider() terraform.ResourceProvider {
 	}
 }
 
+// ProviderConfigure returns a configured client.
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
 	config := Config{

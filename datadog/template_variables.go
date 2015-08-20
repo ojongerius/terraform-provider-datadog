@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
+// templateVariablesSchema returns a template variable schema.
 func templateVariablesSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeSet,
@@ -35,6 +36,7 @@ func templateVariablesSchema() *schema.Schema {
 	}
 }
 
+// templateVariablesHash returns a hash of variables, used to detect change.
 func templateVariablesHash(v interface{}) int {
 	var buf bytes.Buffer
 	m := v.(map[string]interface{})
