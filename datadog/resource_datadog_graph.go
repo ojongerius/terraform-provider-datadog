@@ -14,9 +14,9 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-// GraphDefintionRequests works around the nested struct in
+// graphDefintionRequests works around the nested struct in
 // https://github.com/zorkian/go-datadog-api/blob/master/dashboards.go#L16
-type GraphDefintionRequests struct {
+type graphDefintionRequests struct {
 	Query   string `json:"q"`
 	Stacked bool   `json:"stacked"`
 }
@@ -225,7 +225,7 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 			// Add the request
 			log.Printf("[DEBUG] Adding graph query %s", m["query"].(string))
 			log.Printf("[DEBUG] Adding graph stacked %t", m["stacked"].(bool))
-			graphRequests = append(graphRequests, GraphDefintionRequests{Query: m["query"].(string),
+			graphRequests = append(graphRequests, graphDefintionRequests{Query: m["query"].(string),
 				Stacked: m["stacked"].(bool)})
 		}
 
