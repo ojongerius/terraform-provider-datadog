@@ -17,7 +17,7 @@ func createPlaceholderGraph() []datadog.Graph {
 	graphDefinition := datadog.Graph{}.Definition
 	graphDefinition.Viz = "timeseries"
 	r := datadog.Graph{}.Definition.Requests
-	graphDefinition.Requests = append(r, GraphDefintionRequests{Query: "avg:system.mem.free{*}", Stacked: false})
+	graphDefinition.Requests = append(r, graphDefintionRequests{Query: "avg:system.mem.free{*}", Stacked: false})
 	graph := datadog.Graph{Title: "Mandatory placeholder graph", Definition: graphDefinition}
 	graphs := []datadog.Graph{}
 	graphs = append(graphs, graph)
