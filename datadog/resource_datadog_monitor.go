@@ -83,6 +83,31 @@ func resourceDatadogMonitor() *schema.Resource {
 
 // buildMonitorStruct returns a monitor struct
 func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor {
+	// TODO: Add support for service checks
+	/*
+	For service checks, query should be:
+
+	"check".over(tags).last(count).count_by_status()
+		* "check" name of the check, e.g. datadog.agent.up
+	    * "tags" one or more quoted tags (comma-separated), or "*". e.g.: .over("env:prod", "role:db")
+		* "count" must be at >= your max threshold (defined in the options). e.g. if you want to notify on 1 critical, 3 ok and 2 warn statuses count should be 3.
+
+    For metric checks:
+
+	* time_aggr(time_window):space_aggr:metric{tags} [by {key}] operator #
+	* time_aggr avg, sum, max, min, change, or pct_change
+	* time_window last_#m (5, 10, 15, or 30), last_#h (1, 2, or 4), or last_1d
+	* space_aggr avg, sum, min, or max
+	* tags one or more tags (comma-separated), or *
+	* key a 'key' in key:value tag syntax; defines a separate alert for each tag in the group (multi-alert)
+	* operator <, <=, >, >=, ==, or !=
+	* # an integer or decimal number used to set the threshold
+	If you are using the change or pct_change time aggregator, you can instead use change_aggr(time_aggr(time_window), timeshift):space_aggr:metric{tags} [by {key}] operator # with:
+	* change_aggr change, pct_change
+	* time_aggr avg, sum, max, min
+	* time_window last_#m (1, 5, 10, 15, or 30), last_#h (1, 2, or 4), or last_#d (1 or 2)
+	* timeshift #m_ago (5, 10, 15, or 30), #h_ago (1, 2, or 4), or 1d_ago
+	 */
 	name := d.Get("name").(string)
 	message := d.Get("message").(string)
 	timeAggr := d.Get("time_aggr").(string)
