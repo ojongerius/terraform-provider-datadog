@@ -33,7 +33,7 @@ func resourceDatadogMonitor() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"count": &schema.Schema{
+			"check_count": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -71,7 +71,7 @@ func resourceDatadogMonitor() *schema.Resource {
 			// Alert Settings
 			"warning": &schema.Schema{
 				Type:     schema.TypeMap,
-				Optional:  true,
+				Optional: true,
 			},
 			"critical": &schema.Schema{
 				Type:     schema.TypeMap,
@@ -105,26 +105,11 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 	monitorType := d.Get("type").(string)
 	var query string
 
-	if d.Get("type").(string) == "service_check" {
-		fmt.Println("It's a service check")
-		// TODO: for now we'll let users pass this is as in, constructing is pretty fiddly and does not
-		// add much value (AFAIC)
-		query = d.Get("query").(string)
-		// Example queries:
-		//    'query': "zone_check".over("host:gnomes-i-4d82f8a4").last(3).count_by_status()'
-		//    'query': '"ntp.in_sync".over("*").last(2).count_by_status()',
-		//    'query': 'avg(last_5m):avg:aws.rds.cpuutilization{*} > 80',
-		//    'query': 'avg(last_15m):avg:aws.elb.un_healthy_host_count{*} > 1',
-		//	  'query': 'change(sum(last_1h),1h_ago):sum:puppet.failure.events{*} > 0',
-		//    'query': '"datadog.agent.up".over("service_name:bulk-download").last(2).count_by_status()',
-		//
-		/*
-		/query = fmt.Sprintf("\"%s\".over(\"%s)\").last(%s).count_by_status()", check,
-			tags,
-			count)
-		*/
+	if d.Get("type").(string) == "service check" {
+		check := d.Get("check").(string)
+		checkCount := d.Get("check_count").(string)
+		query = fmt.Sprintf("\"%s\".over(\"%s\").last(%s).count_by_status()", check, tags, checkCount)
 	} else {
-		fmt.Println("It's a metric check")
 		operator := d.Get("operator").(string)
 		timeAggr := d.Get("time_aggr").(string)
 		timeWindow := d.Get("time_window").(string)
@@ -143,7 +128,7 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 		NotifyNoData:    d.Get("notify_no_data").(bool),
 		NoDataTimeframe: d.Get("no_data_timeframe").(int),
 	}
-	// TODO: handle notifications for service checks.
+	// TODO: handle notifications for both 'metric alerts' and 'service checks'.
 
 	m := datadog.Monitor{
 		Type:    monitorType,
@@ -161,8 +146,7 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 	log.Print("[DEBUG] creating monitor")
 	client := meta.(*datadog.Client)
 
-	if d.Get("type").(string) == "service_check" {
-		// TODO: remove "meh"
+	if d.Get("type").(string) == "service check" {
 		log.Print("[DEBUG] Creating service check")
 		m, err := client.CreateMonitor(buildMonitorStruct(d, "meh"))
 
@@ -175,9 +159,6 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	log.Print("[DEBUG] Creating metrics check")
-
-	fmt.Println("XXXXX")
-	fmt.Print(buildMonitorStruct(d, "warning"))
 
 	w, err := client.CreateMonitor(buildMonitorStruct(d, "warning"))
 
@@ -203,7 +184,7 @@ func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) erro
 	log.Print("[DEBUG] deleting monitor")
 	client := meta.(*datadog.Client)
 
-	if d.Get("type").(string) == "service_check" {
+	if d.Get("type").(string) == "service check" {
 		log.Print("[DEBUG] Deleting service check")
 		ID, err := strconv.Atoi(d.Id())
 		if err != nil {
@@ -244,25 +225,27 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 	log.Print("[DEBUG] verifying monitor exists")
 	client := meta.(*datadog.Client)
 
-	if d.Get("type").(string) == "service_check" {
-		log.Print("[DEBUG] Deleting service check")
+	if d.Get("type").(string) == "service check" {
+		log.Print("[DEBUG] verifying service check exists")
 		ID, err := strconv.Atoi(d.Id())
 		if err != nil {
 			return false, err
 		}
 		_, err = client.GetMonitor(ID)
 
-		if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
-			log.Printf("[DEBUG] monitor does not exist: %s", err)
-			return false, err
-			if err != nil {
+		if err != nil {
+			if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
+				log.Printf("[DEBUG] monitor does not exist: %s", err)
 				return false, err
 			}
-			return true, nil
+			return false, err
 		}
+
+		return true, nil
 	}
 
-	log.Print("[DEBUG] Deleting metrics check")
+	log.Print("[DEBUG] verifying metrics check exists")
+
 	exists := false
 	for _, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
@@ -314,7 +297,7 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 
 	client := meta.(*datadog.Client)
 
-	if d.Get("type").(string) == "service_check" {
+	if d.Get("type").(string) == "service check" {
 		body := buildMonitorStruct(d, "meh")
 
 		ID, err := strconv.Atoi(d.Id())

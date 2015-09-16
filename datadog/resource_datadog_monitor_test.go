@@ -22,15 +22,17 @@ func TestAccDatadogMonitor_Basic(t *testing.T) {
 			resource.TestStep{
 				Config: testAccCheckDatadogMonitorConfigBasic,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckDatadogMonitorExists("datadog_monitor.bar"),
+					testAccCheckDatadogMonitorExists("datadog_monitor.foo"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "name", "name for monitor foo"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "message", "description for monitor foo"),
 					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "type", "metric alert"),
+					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "metric", "aws.ec2.cpu"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "metric_tags", "*"),
+						"datadog_monitor.foo", "tags", "*"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "time_aggr", "avg"),
 					resource.TestCheckResourceAttr(
@@ -48,8 +50,35 @@ func TestAccDatadogMonitor_Basic(t *testing.T) {
 	})
 }
 
-func testAccCheckDatadogMonitorDestroy(s *terraform.State) error {
+func TestAccDatadogMonitor_BasicServiceCheck(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckDatadogMonitorDestroy,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config: testAccCheckDatadogMonitorConfigBasicServiceCheck,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDatadogMonitorExists("datadog_monitor.bar"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.bar", "name", "name for monitor bar"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.bar", "message", "description for monitor bar"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.bar", "type", "service check"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.bar", "check", "datadog.agent.up"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.bar", "notify_no_data", "false"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.bar", "tags", "*"),
+				),
+			},
+		},
+	})
+}
 
+func testAccCheckDatadogMonitorDestroy(s *terraform.State) error {
 	client := testAccProvider.Meta().(*datadog.Client)
 	for _, rs := range s.RootModule().Resources {
 		for _, v := range strings.Split(rs.Primary.ID, "__") {
@@ -108,10 +137,11 @@ func testAccCheckDatadogMonitorExists(n string) resource.TestCheckFunc {
 const testAccCheckDatadogMonitorConfigBasic = `
 resource "datadog_monitor" "foo" {
   name = "name for monitor foo"
+  type = "metric alert"
   message = "description for monitor foo"
 
   metric = "aws.ec2.cpu"
-  metric_tags = "*" // one or more comma separated tags (defaults to *)
+  tags = "*" // one or more comma separated tags (defaults to *)
 
   time_aggr = "avg" // avg, sum, max, min, change, or pct_change
   time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
@@ -129,6 +159,17 @@ resource "datadog_monitor" "foo" {
   }
 
   notify_no_data = false
+}
+`
 
+const testAccCheckDatadogMonitorConfigBasicServiceCheck = `
+resource "datadog_monitor" "bar" {
+  name = "name for monitor bar"
+  type = "service check"
+  message = "description for monitor bar"
+  check = "datadog.agent.up"
+  check_count = 3
+
+  notify_no_data = false
 }
 `
