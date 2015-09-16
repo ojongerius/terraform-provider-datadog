@@ -11,6 +11,8 @@ import (
 	"github.com/zorkian/go-datadog-api"
 )
 
+// TODO: Add service check monitor test.
+
 func TestAccDatadogMonitor_Basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
