@@ -17,3 +17,6 @@ before_install:
 after_success:
   - make ci
   - ghr --username ojongerius --token $GITHUB_TOKEN --replace --prerelease --debug pre-release dist/
+branches:
+  only:
+    - master
