@@ -103,12 +103,14 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 	message := d.Get("message").(string)
 	tags := d.Get("tags").(string)
 	monitorType := d.Get("type").(string)
+	var monitorName string
 	var query string
 
 	if d.Get("type").(string) == "service check" {
 		check := d.Get("check").(string)
 		checkCount := d.Get("check_count").(string)
 		query = fmt.Sprintf("\"%s\".over(\"%s\").last(%s).count_by_status()", check, tags, checkCount)
+		monitorName = name
 	} else {
 		operator := d.Get("operator").(string)
 		timeAggr := d.Get("time_aggr").(string)
@@ -122,6 +124,7 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 			tags,
 			operator,
 			d.Get(fmt.Sprintf("%s.threshold", typeStr)))
+		monitorName = fmt.Sprintf("[%s] %s", typeStr, name)
 	}
 
 	o := datadog.Options{
@@ -133,7 +136,7 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 	m := datadog.Monitor{
 		Type:    monitorType,
 		Query:   query,
-		Name:    fmt.Sprintf("[%s] %s", typeStr, name), // typeStr only for metrics
+		Name:    monitorName,
 		Message: fmt.Sprintf("%s", message),
 		Options: o,
 	}
@@ -148,7 +151,7 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 
 	if d.Get("type").(string) == "service check" {
 		log.Print("[DEBUG] Creating service check")
-		m, err := client.CreateMonitor(buildMonitorStruct(d, "meh"))
+		m, err := client.CreateMonitor(buildMonitorStruct(d, ""))
 
 		if err != nil {
 			return fmt.Errorf("error creating service check: %s", err)
@@ -298,7 +301,7 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 	client := meta.(*datadog.Client)
 
 	if d.Get("type").(string) == "service check" {
-		body := buildMonitorStruct(d, "meh")
+		body := buildMonitorStruct(d, "")
 
 		ID, err := strconv.Atoi(d.Id())
 		if err != nil {
