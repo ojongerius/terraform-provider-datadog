@@ -134,8 +134,8 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 	}
 
 	o := datadog.Options{
-		NotifyNoData:    d.Get("notify_no_data").(bool),
-		NoDataTimeframe: d.Get("no_data_timeframe").(int),
+		NotifyNoData:     d.Get("notify_no_data").(bool),
+		NoDataTimeframe:  d.Get("no_data_timeframe").(int),
 		RenotifyInterval: d.Get("renotify_interval").(int),
 	}
 
