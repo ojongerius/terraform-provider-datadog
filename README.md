@@ -11,7 +11,7 @@ It currently supports 4 resources:
 * *Graphs*: datadog_graph
 * *Monitors*: datadog_monitor -originally contributed by [Vincenzo
   Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio). This will be renamed to datadog_metric_check in the future.
-* *Service Checks: datadog_service_check
+* *Service Checks*: datadog_service_check
 
 Feel free to open new [issues](https://github.com/ojongerius/terraform-provider-datadog/issues) for extra resources or bugs you find. After finishing
 polishing of the current resources I'm planning to add a
