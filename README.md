@@ -5,12 +5,13 @@ status](https://travis-ci.org/ojongerius/terraform-provider-datadog.svg)](https:
 
 A [Terraform](https://github.com/hashicorp/terraform) plugin that provides resources for [Datadog](https://www.datadoghq.com/).
 
-It currently supports 3 resources:
+It currently supports 4 resources:
 
 * *Timeboards*: datadog_dashboard
 * *Graphs*: datadog_graph
 * *Monitors*: datadog_monitor -originally contributed by [Vincenzo
-  Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio).
+  Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio). This will be renamed to datadog_metric_check in the future.
+* *Service Checks: datadog_service_check
 
 Feel free to open new [issues](https://github.com/ojongerius/terraform-provider-datadog/issues) for extra resources or bugs you find. After finishing
 polishing of the current resources I'm planning to add a
@@ -117,61 +118,26 @@ resource "datadog_monitor" "baz" {
 }
 ```
 
-### Example configuration combined
+### Service Checks
+
+Example configuration:
 
 ``` HCL
-   resource "datadog_graph" "bar" {
-       title = "Average Memory Free bar"
-       dashboard_id = "${datadog_dashboard.foo.id}"
-       description = "description for graph bar"
-       title = "bar"
-       viz =  "timeseries"
-       request {
-           query =  "avg:system.cpu.system{*}"
-           stacked = false
-       }
-       request {
-           query =  "avg:system.cpu.user{*}"
-           stacked = false
-       }
-       request {
-           query =  "avg:system.mem.user{*}"
-           stacked = false
-       }
+resource "datadog_service_check" "bar" {
+  name = "name for service check bar"
+  message = "description for service check bar"
+  check = "datadog.agent.up"
+  check_count = 3
 
-   }
-
-   resource "datadog_monitor" "baz" {
-     name = "baz"
-     message = "Description of monitor baz"
-
-     metric = "aws.ec2.cpu"
-     metric_tags = "*" // one or more comma separated tags (defaults to *)
-
-     time_aggr = "avg" // avg, sum, max, min, change, or pct_change
-     time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
-     space_aggr = "avg" // avg, sum, min, or max
-     operator = "<" // <, <=, >, >=, ==, or !=
-
-     warning {
-       threshold = 0
-       notify = "@hipchat-<name>"
-     }
-
-     critical {
-       threshold = 0
-       notify = "@pagerduty"
-     }
-
-     //notify_no_data = false // Optional, defaults to true
-   }
+  notify_no_data = false
+}
 ```
 
 ## Usage
 
-Like any other Terraform interations.
+Like any other Terraform interactions.
 
-Pro tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
+Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
 
 ###Plan
 ```sh
