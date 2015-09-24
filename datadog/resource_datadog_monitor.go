@@ -9,7 +9,6 @@ import (
 	"github.com/zorkian/go-datadog-api"
 
 	"github.com/hashicorp/terraform/helper/schema"
-	//"github.com/mitchellh/reflectwalk"
 )
 
 // resourceDatadogMonitor is a Datadog monitor resource
@@ -26,43 +25,31 @@ func resourceDatadogMonitor() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"type": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"check": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"check_count": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 			// Metric and Monitor settings
 			"metric": &schema.Schema{
 				Type:     schema.TypeString,
-				Optional: true,
+				Required: true,
 			},
-			"tags": &schema.Schema{
+			"metric_tags": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "*",
 			},
 			"time_aggr": &schema.Schema{
 				Type:     schema.TypeString,
-				Optional: true,
+				Required: true,
 			},
 			"time_window": &schema.Schema{
 				Type:     schema.TypeString,
-				Optional: true,
+				Required: true,
 			},
 			"space_aggr": &schema.Schema{
 				Type:     schema.TypeString,
-				Optional: true,
+				Required: true,
 			},
 			"operator": &schema.Schema{
 				Type:     schema.TypeString,
-				Optional: true,
+				Required: true,
 			},
 			"message": &schema.Schema{
 				Type:     schema.TypeString,
@@ -72,11 +59,11 @@ func resourceDatadogMonitor() *schema.Resource {
 			// Alert Settings
 			"warning": &schema.Schema{
 				Type:     schema.TypeMap,
-				Optional: true,
+				Required: true,
 			},
 			"critical": &schema.Schema{
 				Type:     schema.TypeMap,
-				Optional: true,
+				Required: true,
 			},
 
 			// Additional Settings
@@ -90,62 +77,63 @@ func resourceDatadogMonitor() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-			"renotify_interval": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  0,
-			},
 		},
 	}
 }
 
 // buildMonitorStruct returns a monitor struct
 func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor {
-	// TODO: This is WIP, it might make more sense to have 2 separate resources.
-	// A little duplication VS being able to handle if configs are optional/mandatory, etc
+	// TODO: Add support for service checks
+	/*
+			For service checks, query should be:
 
-	log.Print("[DEBUG] building monitor struct")
+			"check".over(tags).last(count).count_by_status()
+				* "check" name of the check, e.g. datadog.agent.up
+			    * "tags" one or more quoted tags (comma-separated), or "*". e.g.: .over("env:prod", "role:db")
+				* "count" must be at >= your max threshold (defined in the options). e.g. if you want to notify on 1 critical, 3 ok and 2 warn statuses count should be 3.
+
+		    For metric checks:
+
+			* time_aggr(time_window):space_aggr:metric{tags} [by {key}] operator #
+			* time_aggr avg, sum, max, min, change, or pct_change
+			* time_window last_#m (5, 10, 15, or 30), last_#h (1, 2, or 4), or last_1d
+			* space_aggr avg, sum, min, or max
+			* tags one or more tags (comma-separated), or *
+			* key a 'key' in key:value tag syntax; defines a separate alert for each tag in the group (multi-alert)
+			* operator <, <=, >, >=, ==, or !=
+			* # an integer or decimal number used to set the threshold
+			If you are using the change or pct_change time aggregator, you can instead use change_aggr(time_aggr(time_window), timeshift):space_aggr:metric{tags} [by {key}] operator # with:
+			* change_aggr change, pct_change
+			* time_aggr avg, sum, max, min
+			* time_window last_#m (1, 5, 10, 15, or 30), last_#h (1, 2, or 4), or last_#d (1 or 2)
+			* timeshift #m_ago (5, 10, 15, or 30), #h_ago (1, 2, or 4), or 1d_ago
+	*/
 	name := d.Get("name").(string)
 	message := d.Get("message").(string)
-	tags := d.Get("tags").(string)
-	monitorType := d.Get("type").(string)
-	var monitorName string
-	var query string
-
-	if d.Get("type").(string) == "service check" {
-		check := d.Get("check").(string)
-		checkCount := d.Get("check_count").(string)
-		query = fmt.Sprintf("\"%s\".over(\"%s\").last(%s).count_by_status()", check, tags, checkCount)
-		monitorName = name
-	} else {
-		operator := d.Get("operator").(string)
-		timeAggr := d.Get("time_aggr").(string)
-		timeWindow := d.Get("time_window").(string)
-		spaceAggr := d.Get("space_aggr").(string)
-		metric := d.Get("metric").(string)
-		query = fmt.Sprintf("%s(%s):%s:%s{%s} %s %s", timeAggr,
-			timeWindow,
-			spaceAggr,
-			metric,
-			tags,
-			operator,
-			d.Get(fmt.Sprintf("%s.threshold", typeStr)))
-		monitorName = fmt.Sprintf("[%s] %s", typeStr, name)
-	}
+	timeAggr := d.Get("time_aggr").(string)
+	timeWindow := d.Get("time_window").(string)
+	spaceAggr := d.Get("space_aggr").(string)
+	metric := d.Get("metric").(string)
+	tags := d.Get("metric_tags").(string)
+	operator := d.Get("operator").(string)
+	query := fmt.Sprintf("%s(%s):%s:%s{%s} %s %s", timeAggr,
+		timeWindow,
+		spaceAggr,
+		metric,
+		tags,
+		operator,
+		d.Get(fmt.Sprintf("%s.threshold", typeStr)))
 
 	o := datadog.Options{
-		NotifyNoData:     d.Get("notify_no_data").(bool),
-		NoDataTimeframe:  d.Get("no_data_timeframe").(int),
-		RenotifyInterval: d.Get("renotify_interval").(int),
+		NotifyNoData:    d.Get("notify_no_data").(bool),
+		NoDataTimeframe: d.Get("no_data_timeframe").(int),
 	}
 
-	// TODO: handle notifications for both 'metric alerts' and 'service checks'.
-
 	m := datadog.Monitor{
-		Type:    monitorType,
+		Type:    "metric alert",
 		Query:   query,
-		Name:    monitorName,
-		Message: fmt.Sprintf("%s", message),
+		Name:    fmt.Sprintf("[%s] %s", typeStr, name),
+		Message: fmt.Sprintf("%s %s", message, d.Get(fmt.Sprintf("%s.notify", typeStr))),
 		Options: o,
 	}
 
@@ -154,22 +142,7 @@ func buildMonitorStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor
 
 // resourceDatadogMonitorCreate creates a monitor.
 func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) error {
-	log.Print("[DEBUG] creating monitor")
 	client := meta.(*datadog.Client)
-
-	if d.Get("type").(string) == "service check" {
-		log.Print("[DEBUG] Creating service check")
-		m, err := client.CreateMonitor(buildMonitorStruct(d, ""))
-
-		if err != nil {
-			return fmt.Errorf("error creating service check: %s", err)
-		}
-
-		d.SetId(strconv.Itoa(m.Id))
-		return nil
-	}
-
-	log.Print("[DEBUG] Creating metrics check")
 
 	w, err := client.CreateMonitor(buildMonitorStruct(d, "warning"))
 
@@ -192,24 +165,8 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 
 // resourceDatadogMonitorDelete deletes a monitor.
 func resourceDatadogMonitorDelete(d *schema.ResourceData, meta interface{}) error {
-	log.Print("[DEBUG] deleting monitor")
 	client := meta.(*datadog.Client)
 
-	if d.Get("type").(string) == "service check" {
-		log.Print("[DEBUG] Deleting service check")
-		ID, err := strconv.Atoi(d.Id())
-		if err != nil {
-			return err
-		}
-
-		err = client.DeleteMonitor(ID)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	log.Print("[DEBUG] Deleting metrics check")
 	for _, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
 			return fmt.Errorf("Id not set.")
@@ -233,29 +190,7 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 	// Exists - This is called to verify a resource still exists. It is called prior to Read,
 	// and lowers the burden of Read to be able to assume the resource exists.
 
-	log.Print("[DEBUG] verifying monitor exists")
 	client := meta.(*datadog.Client)
-
-	if d.Get("type").(string) == "service check" {
-		log.Print("[DEBUG] verifying service check exists")
-		ID, err := strconv.Atoi(d.Id())
-		if err != nil {
-			return false, err
-		}
-		_, err = client.GetMonitor(ID)
-
-		if err != nil {
-			if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
-				log.Printf("[DEBUG] monitor does not exist: %s", err)
-				return false, err
-			}
-			return false, err
-		}
-
-		return true, nil
-	}
-
-	log.Print("[DEBUG] verifying metrics check exists")
 
 	exists := false
 	for _, v := range strings.Split(d.Id(), "__") {
@@ -306,25 +241,6 @@ func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error 
 func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] running update.")
 
-	client := meta.(*datadog.Client)
-
-	if d.Get("type").(string) == "service check" {
-		body := buildMonitorStruct(d, "")
-
-		ID, err := strconv.Atoi(d.Id())
-		if err != nil {
-			return err
-		}
-
-		body.Id = ID
-		err = client.UpdateMonitor(body)
-
-		if err != nil {
-			return fmt.Errorf("error updating warning: %s", err.Error())
-		}
-		return nil
-	}
-
 	split := strings.Split(d.Id(), "__")
 
 	wID, cID := split[0], split[1]
@@ -348,6 +264,8 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 	if iErr != nil {
 		return iErr
 	}
+
+	client := meta.(*datadog.Client)
 
 	warningBody := buildMonitorStruct(d, "warning")
 	criticalBody := buildMonitorStruct(d, "critical")
