@@ -6,9 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/zorkian/go-datadog-api"
-
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/zorkian/go-datadog-api"
 )
 
 // resourceDatadogServiceCheck is a Datadog monitor resource
@@ -69,12 +68,11 @@ func resourceDatadogServiceCheck() *schema.Resource {
 }
 
 // buildServiceCheckStruct returns a monitor struct
-func buildServiceCheckStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor {
+func buildServiceCheckStruct(d *schema.ResourceData) *datadog.Monitor {
 	log.Print("[DEBUG] building monitor struct")
 	name := d.Get("name").(string)
 	message := d.Get("message").(string)
 	tags := d.Get("tags").(string)
-	monitorType := d.Get("type").(string)
 	var monitorName string
 	var query string
 
@@ -90,7 +88,7 @@ func buildServiceCheckStruct(d *schema.ResourceData, typeStr string) *datadog.Mo
 	}
 
 	m := datadog.Monitor{
-		Type:    monitorType,
+		Type:    "service check",
 		Query:   query,
 		Name:    monitorName,
 		Message: fmt.Sprintf("%s", message),
@@ -106,7 +104,7 @@ func resourceDatadogServiceCheckCreate(d *schema.ResourceData, meta interface{})
 	client := meta.(*datadog.Client)
 
 	log.Print("[DEBUG] Creating service check")
-	m, err := client.CreateMonitor(buildServiceCheckStruct(d, ""))
+	m, err := client.CreateMonitor(buildServiceCheckStruct(d))
 
 	if err != nil {
 		return fmt.Errorf("error creating service check: %s", err)
@@ -178,7 +176,7 @@ func resourceDatadogServiceCheckUpdate(d *schema.ResourceData, meta interface{})
 
 	client := meta.(*datadog.Client)
 
-	body := buildServiceCheckStruct(d, "")
+	body := buildServiceCheckStruct(d)
 
 	ID, err := strconv.Atoi(d.Id())
 	if err != nil {

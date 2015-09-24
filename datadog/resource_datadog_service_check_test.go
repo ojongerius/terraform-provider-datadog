@@ -40,18 +40,19 @@ func TestAccDatadogServiceCheck_Basic(t *testing.T) {
 func testAccCheckDatadogServiceCheckDestroy(s *terraform.State) error {
 	client := testAccProvider.Meta().(*datadog.Client)
 	for _, r := range s.RootModule().Resources {
-			_, err := client.GetMonitor(r.Primary.ID)
-			if err != nil {
-				// 404 is what we want, anything else is an error. Sadly our API will return a string like so:
-				// return errors.New("API error: " + resp.Status)
-				// For now we'll use unfold :|
-				if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
-					continue
-				} else {
-					fmt.Errorf("Received an error retreieving monitor %s", err)
-				}
+		i, _ := strconv.Atoi(r.Primary.ID)
+		_, err := client.GetMonitor(i)
+		if err != nil {
+			// 404 is what we want, anything else is an error. Sadly our API will return a string like so:
+			// return errors.New("API error: " + resp.Status)
+			// For now we'll use unfold :|
+			if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
+				continue
 			} else {
-				fmt.Errorf("Monitor still exists. %s", err)
+				fmt.Errorf("Received an error retreieving monitor %s", err)
+			}
+		} else {
+			fmt.Errorf("Monitor still exists. %s", err)
 		}
 	}
 	return nil
@@ -61,7 +62,8 @@ func testAccCheckDatadogServiceCheckExists(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccProvider.Meta().(*datadog.Client)
 		for _, r := range s.RootModule().Resources {
-			_, err := client.GetMonitor(r.Primary.ID)
+			i, _ := strconv.Atoi(r.Primary.ID)
+			_, err := client.GetMonitor(i)
 			if err != nil {
 				return fmt.Errorf("Received an error retrieving monitor %s", err)
 			}
