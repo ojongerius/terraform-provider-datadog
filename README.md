@@ -74,7 +74,7 @@ Example configuration:
 
 ### Monitors
 
-Example configuration:
+Example configuration, _this resource will be renamed to datadog_metric_check_:
 
 ``` HCL
 resource "datadog_monitor" "baz" {
@@ -110,7 +110,7 @@ Example configuration:
 ``` HCL
 resource "datadog_service_check" "bar" {
   name = "name for service check bar"
-  message = "description for service check bar"
+  message = "description for service check bar @pagerduty"
   check = "datadog.agent.up"
   check_count = 3
 
