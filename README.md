@@ -77,21 +77,6 @@ Example configuration:
 Example configuration:
 
 ``` HCL
-resource "datadog_dashboard" "foo" {
-    description = "description for dashboard foo"
-    title = "title for dashboard foo bar"
-    template_variable {
-        name = "bar"
-        prefix = "host"
-        default = "host:bar.example.com"
-    }
-    template_variable {
-        name = "baz"
-        prefix = "host"
-        default = "host:baz.example.com"
-    }
-}
-
 resource "datadog_monitor" "baz" {
     name = "baz"
     message = "Description of monitor baz"
