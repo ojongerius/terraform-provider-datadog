@@ -172,7 +172,7 @@ func resourceDatadogDashboardUpdate(d *schema.ResourceData, meta interface{}) er
 			v = append(v, datadog.TemplateVariable{
 				Name:    m["name"].(string),
 				Prefix:  m["prefix"].(string),
-				Default: m["prefix"].(string),
+				Default: m["default"].(string),
 			})
 			variables.Add(variable)
 		}
