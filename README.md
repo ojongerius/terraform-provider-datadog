@@ -7,11 +7,11 @@ A [Terraform](https://github.com/hashicorp/terraform) plugin that provides resou
 
 It currently supports 4 resources:
 
-* *Timeboards*: datadog_dashboard
-* *Graphs*: datadog_graph
+* *Service Checks*: datadog_service_check
 * *Monitors*: datadog_monitor -originally contributed by [Vincenzo
   Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio). This will be renamed to datadog_metric_check in the future.
-* *Service Checks*: datadog_service_check
+* *Timeboards*: datadog_dashboard
+* *Graphs*: datadog_graph
 
 Feel free to open new [issues](https://github.com/ojongerius/terraform-provider-datadog/issues) for extra resources or bugs you find. After finishing
 polishing of the current resources I'm planning to add a
@@ -25,6 +25,54 @@ https://github.com/ojongerius/terraform-provider-datadog/issues).
 Download builds for Darwin, Linux and Windows from the [releases page](https://github.com/ojongerius/terraform-provider-datadog/releases/).
 
 ## Resources
+
+### Service Checks
+
+Example configuration:
+
+``` HCL
+resource "datadog_service_check" "bar" {
+  name = "name for service check bar"
+  message = "description for service check bar @pagerduty"
+  check = "datadog.agent.up"
+  check_count = 3
+  tags = ["environment:foo", "host:bar"]
+
+  notify_no_data = false
+}
+```
+
+### Monitors
+
+Example configuration, _this resource will be renamed to datadog_metric_check_:
+
+``` HCL
+resource "datadog_monitor" "baz" {
+    name = "baz"
+    message = "Description of monitor baz"
+
+    metric = "aws.ec2.cpu"
+    metric_tags = "*" // one or more comma separated tags (defaults to *)
+
+    time_aggr = "avg" // avg, sum, max, min, change, or pct_change
+    time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
+    space_aggr = "avg" // avg, sum, min, or max
+    operator = "<" // <, <=, >, >=, ==, or !=
+
+    warning {
+        threshold = 0
+        notify = "@hipchat-<name>"
+    }
+
+    critical {
+        threshold = 0
+        notify = "@pagerduty"
+    }
+
+    notify_no_data = false // Optional, defaults to true
+}
+```
+
 ### Dashboards
 
 Example configuration:
@@ -70,52 +118,6 @@ Example configuration:
        }
 
    }
-```
-
-### Monitors
-
-Example configuration, _this resource will be renamed to datadog_metric_check_:
-
-``` HCL
-resource "datadog_monitor" "baz" {
-    name = "baz"
-    message = "Description of monitor baz"
-
-    metric = "aws.ec2.cpu"
-    metric_tags = "*" // one or more comma separated tags (defaults to *)
-
-    time_aggr = "avg" // avg, sum, max, min, change, or pct_change
-    time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
-    space_aggr = "avg" // avg, sum, min, or max
-    operator = "<" // <, <=, >, >=, ==, or !=
-
-    warning {
-        threshold = 0
-        notify = "@hipchat-<name>"
-    }
-
-    critical {
-        threshold = 0
-        notify = "@pagerduty"
-    }
-
-    notify_no_data = false // Optional, defaults to true
-}
-```
-
-### Service Checks
-
-Example configuration:
-
-``` HCL
-resource "datadog_service_check" "bar" {
-  name = "name for service check bar"
-  message = "description for service check bar @pagerduty"
-  check = "datadog.agent.up"
-  check_count = 3
-
-  notify_no_data = false
-}
 ```
 
 ## Usage

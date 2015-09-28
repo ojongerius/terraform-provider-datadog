@@ -1,11 +1,11 @@
 package datadog
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"strconv"
 	"strings"
-	"bytes"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
