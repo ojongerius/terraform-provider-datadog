@@ -145,12 +145,13 @@ func resourceDatadogServiceCheckExists(d *schema.ResourceData, meta interface{})
 	if err != nil {
 		return false, err
 	}
+
 	_, err = client.GetMonitor(ID)
 
 	if err != nil {
 		if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
-			log.Printf("[DEBUG] monitor does not exist: %s", err)
-			return false, err
+			log.Printf("[DEBUG] Service Check does not exist: %s", err)
+			return false, nil
 		}
 		return false, err
 	}
