@@ -30,7 +30,11 @@ func TestAccDatadogServiceCheck_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_service_check.bar", "notify_no_data", "false"),
 					resource.TestCheckResourceAttr(
-						"datadog_service_check.bar", "tags", "*"),
+						"datadog_service_check.bar", "tags.0", "environment:foo"),
+					resource.TestCheckResourceAttr(
+						"datadog_service_check.bar", "tags.1", "host:bar"),
+					resource.TestCheckResourceAttr(
+						"datadog_service_check.bar", "tags.#", "2"),
 				),
 			},
 		},
@@ -76,6 +80,7 @@ const testAccCheckDatadogServiceCheckConfigBasic = `
 resource "datadog_service_check" "bar" {
   name = "name for service check bar"
   message = "description for service check bar"
+  tags = ["environment:foo", "host:bar"]
   check = "datadog.agent.up"
   check_count = 3
 

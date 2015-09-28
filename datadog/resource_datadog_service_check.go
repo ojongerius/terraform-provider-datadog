@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"bytes"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
@@ -32,15 +33,10 @@ func resourceDatadogServiceCheck() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			// Metric and ServiceCheck settings
-			"metric": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 			"tags": &schema.Schema{
-				Type:     schema.TypeString,
+				Type:     schema.TypeList,
 				Optional: true,
-				Default:  "*",
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"message": &schema.Schema{
 				Type:     schema.TypeString,
@@ -72,13 +68,30 @@ func buildServiceCheckStruct(d *schema.ResourceData) *datadog.Monitor {
 	log.Print("[DEBUG] building monitor struct")
 	name := d.Get("name").(string)
 	message := d.Get("message").(string)
-	tags := d.Get("tags").(string)
+
+	// Tags are are no separate resource/gettable, so some trickery is needed
+	var buffer bytes.Buffer
+	if raw, ok := d.GetOk("tags"); ok {
+		list := raw.([]interface{})
+		length := (len(list) - 1)
+		for i, v := range list {
+			buffer.WriteString(fmt.Sprintf("\"%s\"", v))
+			if i != length {
+				buffer.WriteString(",")
+			}
+
+		}
+	}
+
+	tagsParsed := buffer.String()
+
 	var monitorName string
 	var query string
 
 	check := d.Get("check").(string)
 	checkCount := d.Get("check_count").(string)
-	query = fmt.Sprintf("\"%s\".over(\"%s\").last(%s).count_by_status()", check, tags, checkCount)
+	query = fmt.Sprintf("\"%s\".over(%s).last(%s).count_by_status()", check, tagsParsed, checkCount)
+	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", query))
 	monitorName = name
 
 	o := datadog.Options{
@@ -137,7 +150,6 @@ func resourceDatadogServiceCheckExists(d *schema.ResourceData, meta interface{})
 	// Exists - This is called to verify a resource still exists. It is called prior to Read,
 	// and lowers the burden of Read to be able to assume the resource exists.
 
-	log.Print("[DEBUG] verifying monitor exists")
 	client := meta.(*datadog.Client)
 
 	log.Print("[DEBUG] verifying service check exists")
