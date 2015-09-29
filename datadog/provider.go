@@ -29,6 +29,7 @@ func Provider() terraform.ResourceProvider {
 			"datadog_graph":         resourceDatadogGraph(),
 			"datadog_monitor":       resourceDatadogMonitor(),
 			"datadog_service_check": resourceDatadogServiceCheck(),
+			"datadog_metric_alert":  resourceDatadogMetricAlert(),
 		},
 
 		ConfigureFunc: providerConfigure,
