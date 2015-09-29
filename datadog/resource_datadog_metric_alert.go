@@ -236,10 +236,6 @@ func resourceDatadogMetricAlertExists(d *schema.ResourceData, meta interface{}) 
 		exists = true
 	}
 
-	if exists == false {
-		return false, nil
-	}
-
 	return exists, nil
 }
 

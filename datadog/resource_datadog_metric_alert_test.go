@@ -24,13 +24,19 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "name", "name for metric_alert foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "multi", "true"),
-					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "message", "description for metric_alert foo"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "metric", "aws.ec2.cpu"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "metric_tags", "*"),
+						"datadog_service_check.bar", "tags.0", "environment:foo"),
+					resource.TestCheckResourceAttr(
+						"datadog_service_check.bar", "tags.1", "host:bar"),
+					resource.TestCheckResourceAttr(
+						"datadog_service_check.bar", "tags.#", "2"),
+					resource.TestCheckResourceAttr(
+						"datadog_service_check.bar", "keys.0", "host"),
+					resource.TestCheckResourceAttr(
+						"datadog_service_check.bar", "keys.#", "1"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "time_aggr", "avg"),
 					resource.TestCheckResourceAttr(
@@ -113,7 +119,8 @@ resource "datadog_metric_alert" "foo" {
   key = host // key a 'key' in key:value tag syntax; defines a separate alert for each tag in the group (multi-alert)
 
   metric = "aws.ec2.cpu"
-  tags = ["*"]
+  tags = ["environment:bar", "host:foo"]
+  keys = ["host"]
 
   time_aggr = "avg" // avg, sum, max, min, change, or pct_change
   time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
