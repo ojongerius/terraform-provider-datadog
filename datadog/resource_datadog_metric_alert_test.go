@@ -116,8 +116,6 @@ resource "datadog_metric_alert" "foo" {
   name = "name for metric_alert foo"
   message = "description for metric_alert foo"
 
-  key = host // key a 'key' in key:value tag syntax; defines a separate alert for each tag in the group (multi-alert)
-
   metric = "aws.ec2.cpu"
   tags = ["environment:bar", "host:foo"]
   keys = ["host"]

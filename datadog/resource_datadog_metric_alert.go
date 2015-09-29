@@ -26,7 +26,6 @@ func resourceDatadogMetricAlert() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			// Metric and Monitor settings
 			"metric": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
