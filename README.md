@@ -8,8 +8,9 @@ A [Terraform](https://github.com/hashicorp/terraform) plugin that provides resou
 It currently supports 4 resources:
 
 * *Service Checks*: datadog_service_check
+* *Metric Alerts*: datadog_metric_alert (*experimental*)
 * *Monitors*: datadog_monitor -originally contributed by [Vincenzo
-  Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio). This will be renamed to datadog_metric_check in the future.
+  Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio). This will be renamed to datadog_metric_alert in the future.
 * *Timeboards*: datadog_dashboard
 * *Graphs*: datadog_graph
 
@@ -42,9 +43,41 @@ resource "datadog_service_check" "bar" {
 }
 ```
 
+### Metric Alerts
+
+Example configuration:
+
+``` HCL
+  name = "name for metric_alert foo"
+  message = "description for metric_alert foo"
+
+  metric = "aws.ec2.cpu"                 // Metric to monitor
+  tags = ["environment:bar", "host:foo"] // List of tags to monitor
+  keys = ["host"]                        // List of tag keys to alert on, enabling multi-alerts
+
+  time_aggr = "avg"                      // avg, sum, max, min, change, or pct_change
+  time_window = "last_1h"                // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
+  space_aggr = "avg"                     // avg, sum, min, or max
+  operator = "<"                         // <, <=, >, >=, ==, or !=
+
+  warning {                              // Creates alert with threshold 80
+    threshold = 80
+    notify = "@hipchat-<name>"
+  }
+
+  critical {                             // Creates alert with threshold 90
+    threshold = 90
+    notify = "@pagerduty"
+  }
+
+  notify_no_data = false                 // Do not alert on no data
+
+}
+```
+
 ### Monitors
 
-Example configuration, _this resource will be renamed to datadog_metric_check_:
+Example configuration, _this resource will be renamed to datadog_metric_alert_:
 
 ``` HCL
 resource "datadog_monitor" "baz" {
