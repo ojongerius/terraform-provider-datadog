@@ -48,8 +48,8 @@ resource "datadog_service_check" "bar" {
 Example configuration:
 
 ``` HCL
-  name = "name for metric_alert foo"
-  message = "description for metric_alert foo"
+  name = "CPU alert for {{host.name}}"
+  message = "CPU alert failed on {{host.name}} in environment {{host.environment}}"
 
   metric = "aws.ec2.cpu"                 // Metric to monitor
   tags = ["environment:bar", "host:foo"] // List of tags to monitor
