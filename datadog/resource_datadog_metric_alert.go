@@ -280,8 +280,8 @@ func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) 
 
 	client := meta.(*datadog.Client)
 
-	warningBody := buildMonitorStruct(d, "warning")
-	criticalBody := buildMonitorStruct(d, "critical")
+	warningBody := buildMetricAlertStruct(d, "warning")
+	criticalBody := buildMetricAlertStruct(d, "critical")
 
 	warningBody.Id = warningID
 	criticalBody.Id = criticalID
