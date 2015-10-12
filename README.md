@@ -9,6 +9,8 @@ It currently supports 4 resources:
 
 * *Service Checks*: datadog_service_check
 * *Metric Alerts*: datadog_metric_alert (*experimental*)
+* *Outlier Alerts*: datadog_outlier_alert (*experimental*, see
+  [introducing-outlier-detection-in-datadog](https://www.datadoghq.com/blog/introducing-outlier-detection-in-datadog/).
 * *Monitors*: datadog_monitor -originally contributed by [Vincenzo
   Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio). This will be renamed to datadog_metric_alert in the future.
 * *Timeboards*: datadog_dashboard
@@ -71,6 +73,42 @@ Example configuration:
   }
 
   notify_no_data = false                 // Do not alert on no data
+
+}
+```
+
+### Outlier Alerts
+
+Example configuration:
+
+``` HCL
+resource "datadog_outlier_alert" "foo" {
+  name = "name for outlier_alert foo"
+  message = "description for outlier_alert foo"
+
+  algorithm = "mad"
+  tolerance = 3.0
+
+  metric = "system.load.5"
+  tags = ["environment:foo", "host:foo"]
+  keys = ["host"]
+
+  time_aggr = "avg"       // avg, sum, max, min, change, or pct_change
+  time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
+  space_aggr = "avg"      // avg, sum, min, or max
+  operator = "<"          // <, <=, >, >=, ==, or !=
+
+  warning {
+    threshold = 0
+    notify = "@hipchat-<name>"
+  }
+
+  critical {
+    threshold = 0
+    notify = "@pagerduty"
+  }
+
+  notify_no_data = false
 
 }
 ```
