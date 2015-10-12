@@ -87,12 +87,12 @@ func resourceDatadogOutlierAlert() *schema.Resource {
 			// Options: algo (currently dbscan or mad) (encorce check?)
 			"algorithm": &schema.Schema{
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 				Default:  "dbscan",
 			},
 			"tolerance": &schema.Schema{
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
 				Default:  3,
 			},
 		},
@@ -107,8 +107,8 @@ func buildOutlierAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mo
 	timeWindow := d.Get("time_window").(string)
 	spaceAggr := d.Get("space_aggr").(string)
 	metric := d.Get("metric").(string)
-	algoritm := d.Get("algorithm").(string)
-	tolerance := d.Get("tolerance").(string)
+	algorithm := d.Get("algorithm").(string)
+	tolerance := strconv.Itoa(d.Get("tolerance").(int))
 
 	// Tags are are no separate resource/gettable, so some trickery is needed
 	var buffer bytes.Buffer
@@ -145,18 +145,14 @@ func buildOutlierAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mo
 	keys := b.String()
 
 	operator := d.Get("operator").(string)
-	// Example query:
-	// 'query': "avg(last_5m):outliers(avg:system.cpu.user{*} by {service_name},'dbscan',3.0) > 0",
 
-	// Metric alert:
-	// query := fmt.Sprintf("%s(%s):%s:%s{%s} %s %s %s", timeAggr,
-	query := fmt.Sprintf("%s(%s):outliers(%s:%s{%s}, '%s',%s) %s %s", timeAggr,
+	query := fmt.Sprintf("%s(%s):outliers(%s:%s{%s} %s, '%s',%s) %s %s", timeAggr,
 		timeWindow,
 		spaceAggr,
 		metric,
 		tagsParsed,
 		keys,
-		algoritm,
+		algorithm,
 		tolerance,
 		operator,
 		d.Get(fmt.Sprintf("%s.threshold", typeStr)))
@@ -169,7 +165,7 @@ func buildOutlierAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mo
 	}
 
 	m := datadog.Monitor{
-		Type:    "metric alert",
+		Type:    "query alert",
 		Query:   query,
 		Name:    fmt.Sprintf("[%s] %s", typeStr, name),
 		Message: fmt.Sprintf("%s %s", message, d.Get(fmt.Sprintf("%s.notify", typeStr))),

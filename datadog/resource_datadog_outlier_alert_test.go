@@ -20,38 +20,38 @@ func TestAccDatadogOutlierAlert_Basic(t *testing.T) {
 			resource.TestStep{
 				Config: testAccCheckDatadogOutlierAlertConfigBasic,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckDatadogOutlierAlertExists("datadog_metric_alert.bar"),
+					testAccCheckDatadogOutlierAlertExists("datadog_outlier_alert.foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "name", "name for metric_alert foo"),
+						"datadog_outlier_alert.foo", "name", "name for outlier_alert foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "message", "description for metric_alert foo"),
+						"datadog_outlier_alert.foo", "message", "description for outlier_alert foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "metric", "aws.ec2.cpu"),
+						"datadog_outlier_alert.foo", "metric", "system.load.5"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert.bar", "tags.0", "environment:foo"),
+						"datadog_outlier_alert.foo", "tags.0", "environment:foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert.bar", "tags.1", "host:bar"),
+						"datadog_outlier_alert.foo", "tags.1", "host:foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert.bar", "tags.#", "2"),
+						"datadog_outlier_alert.foo", "tags.#", "2"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert.bar", "keys.0", "host"),
+						"datadog_outlier_alert.foo", "keys.0", "host"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert.bar", "keys.#", "1"),
+						"datadog_outlier_alert.foo", "keys.#", "1"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "time_aggr", "avg"),
+						"datadog_outlier_alert.foo", "time_aggr", "avg"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "time_window", "last_1h"),
+						"datadog_outlier_alert.foo", "time_window", "last_1h"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "space_aggr", "avg"),
+						"datadog_outlier_alert.foo", "space_aggr", "avg"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "operator", "<"),
+						"datadog_outlier_alert.foo", "operator", "<"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "notify_no_data", "false"),
+						"datadog_outlier_alert.foo", "notify_no_data", "false"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "algorithm", "mad"),
+						"datadog_outlier_alert.foo", "algorithm", "mad"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert", "tolerance", "3"),
-					// TODO: add warning and critical
+						"datadog_outlier_alert.foo", "tolerance", "3"),
+					 //TODO: add warning and critical
 				),
 			},
 		},
@@ -117,14 +117,14 @@ func testAccCheckDatadogOutlierAlertExists(n string) resource.TestCheckFunc {
 
 const testAccCheckDatadogOutlierAlertConfigBasic = `
 resource "datadog_outlier_alert" "foo" {
-  name = "name for metric_alert foo"
-  message = "description for metric_alert foo"
+  name = "name for outlier_alert foo"
+  message = "description for outlier_alert foo"
 
   algorithm = "mad"
-  tolerance = 3
+  tolerance = 3.0
 
-  metric = "aws.ec2.cpu"
-  tags = ["environment:bar", "host:foo"]
+  metric = "system.load.5"
+  tags = ["environment:foo", "host:foo"]
   keys = ["host"]
 
   time_aggr = "avg" // avg, sum, max, min, change, or pct_change
