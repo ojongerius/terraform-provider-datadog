@@ -22,7 +22,6 @@ func resourceDatadogOutlierAlert() *schema.Resource {
 		Exists: resourceDatadogOutlierAlertExists,
 
 		Schema: map[string]*schema.Schema{
-			// TODO: import this shit from a shared resource (prevent duplication)
 			"name": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -83,8 +82,7 @@ func resourceDatadogOutlierAlert() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-			// TODO: Add outlier specific data here
-			// Options: algo (currently dbscan or mad) (encorce check?)
+
 			"algorithm": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
