@@ -20,33 +20,33 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 			resource.TestStep{
 				Config: testAccCheckDatadogMetricAlertConfigBasic,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckDatadogMetricAlertExists("datadog_metric_alert.bar"),
+					testAccCheckDatadogMetricAlertExists("datadog_metric_alert.foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "name", "name for metric_alert foo"),
+						"datadog_metric_alert.foo", "name", "name for metric_alert foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "message", "description for metric_alert foo"),
+						"datadog_metric_alert.foo", "message", "description for metric_alert foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "metric", "aws.ec2.cpu"),
+						"datadog_metric_alert.foo", "metric", "aws.ec2.cpu"),
 					resource.TestCheckResourceAttr(
-						"datadog_service_check.bar", "tags.0", "environment:foo"),
+						"datadog_metric_alert.foo", "tags.0", "environment:foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_service_check.bar", "tags.1", "host:bar"),
+						"datadog_metric_alert.foo", "tags.1", "host:foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_service_check.bar", "tags.#", "2"),
+						"datadog_metric_alert.foo", "tags.#", "2"),
 					resource.TestCheckResourceAttr(
-						"datadog_service_check.bar", "keys.0", "host"),
+						"datadog_metric_alert.foo", "keys.0", "host"),
 					resource.TestCheckResourceAttr(
-						"datadog_service_check.bar", "keys.#", "1"),
+						"datadog_metric_alert.foo", "keys.#", "1"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "time_aggr", "avg"),
+						"datadog_metric_alert.foo", "time_aggr", "avg"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "time_window", "last_1h"),
+						"datadog_metric_alert.foo", "time_window", "last_1h"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "space_aggr", "avg"),
+						"datadog_metric_alert.foo", "space_aggr", "avg"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "operator", "<"),
+						"datadog_metric_alert.foo", "operator", "<"),
 					resource.TestCheckResourceAttr(
-						"datadog_monitor.foo", "notify_no_data", "false"),
+						"datadog_metric_alert.foo", "notify_no_data", "false"),
 					// TODO: add warning and critical
 				),
 			},
@@ -77,7 +77,7 @@ func testAccCheckDatadogMetricAlertDestroy(s *terraform.State) error {
 				if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
 					continue
 				} else {
-					fmt.Errorf("Received an error retreieving monitor %s", err)
+					fmt.Errorf("Received an error retrieving monitor %s", err)
 				}
 			} else {
 				fmt.Errorf("Monitor still exists. %s", err)
@@ -117,7 +117,7 @@ resource "datadog_metric_alert" "foo" {
   message = "description for metric_alert foo"
 
   metric = "aws.ec2.cpu"
-  tags = ["environment:bar", "host:foo"]
+  tags = ["environment:foo", "host:foo"]
   keys = ["host"]
 
   time_aggr = "avg" // avg, sum, max, min, change, or pct_change

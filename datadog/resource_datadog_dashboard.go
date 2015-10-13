@@ -20,19 +20,12 @@ func resourceDatadogDashboard() *schema.Resource {
 		Delete: resourceDatadogDashboardDelete,
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"description": &schema.Schema{
 				Type: schema.TypeString,
-				//Computed: true, // TODO: what does this do?
-				ForceNew: true,
 				Optional: true,
 			},
 			"title": &schema.Schema{
 				Type:     schema.TypeString,
-				ForceNew: true,
 				Optional: true,
 			},
 			"template_variable": templateVariablesSchema(),
