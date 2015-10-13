@@ -21,12 +21,12 @@ func resourceDatadogDashboard() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"description": &schema.Schema{
-				Type: schema.TypeString,
-				Optional: true,
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"title": &schema.Schema{
 				Type:     schema.TypeString,
-				Optional: true,
+				Required: true,
 			},
 			"template_variable": templateVariablesSchema(),
 		},

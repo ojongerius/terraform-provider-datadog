@@ -34,19 +34,15 @@ func resourceDatadogGraph() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"dashboard_id": &schema.Schema{
 				Type: schema.TypeInt,
-				//Computed: true,
 				Required: true,
-				ForceNew: true,
 			},
 			"title": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"viz": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"request": &schema.Schema{
 				Type:     schema.TypeSet,
@@ -66,7 +62,6 @@ func resourceDatadogGraph() *schema.Resource {
 				},
 				Set: resourceDatadogRequestHash,
 			},
-
 			// TODO: support events.
 		},
 	}
