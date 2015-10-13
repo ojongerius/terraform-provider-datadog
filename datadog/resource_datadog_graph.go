@@ -33,7 +33,7 @@ func resourceDatadogGraph() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"dashboard_id": &schema.Schema{
-				Type: schema.TypeInt,
+				Type:     schema.TypeInt,
 				Required: true,
 			},
 			"title": &schema.Schema{
