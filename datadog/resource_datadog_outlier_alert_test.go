@@ -51,7 +51,7 @@ func TestAccDatadogOutlierAlert_Basic(t *testing.T) {
 						"datadog_outlier_alert.foo", "algorithm", "mad"),
 					resource.TestCheckResourceAttr(
 						"datadog_outlier_alert.foo", "tolerance", "3"),
-					 //TODO: add warning and critical
+					//TODO: add warning and critical
 				),
 			},
 		},
