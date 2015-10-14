@@ -240,13 +240,65 @@ func resourceDatadogMetricAlertExists(d *schema.ResourceData, meta interface{}) 
 
 // resourceDatadogMetricAlertRead synchronises Datadog and local state .
 func resourceDatadogMetricAlertRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO: add support for this a read function.
-	/* Read - This is called to resync the local state with the remote state.
-	Terraform guarantees that an existing ID will be set. This ID should be
-	used to look up the resource. Any remote data should be updated into the
-	local data. No changes to the remote resource are to be made.
-	*/
 
+	/*
+		Read - This is called to resync the local state with the remote state.
+		Terraform guarantees that an existing ID will be set. This ID should be
+		used to look up the resource. Any remote data should be updated into the
+		local data. No changes to the remote resource are to be made.
+	*/
+	// resourceDatadogMetricAlertUpdate updates a monitor.
+	log.Printf("[DEBUG] running read.")
+
+	client := meta.(*datadog.Client)
+	for _, v := range strings.Split(d.Id(), "__") {
+		if v == "" {
+			return fmt.Errorf("Id not set.")
+		}
+		ID, iErr := strconv.Atoi(v)
+
+		if iErr != nil {
+			return iErr
+		}
+
+		m, err := client.GetMonitor(ID)
+
+		if err != nil {
+			return err
+		}
+
+		log.Printf("[DEBUG] monitor %v", m)
+
+		// TODO:
+		/*
+			// * Abstract so that this is reusable by other resources
+			// * Could use regexps with named matches
+			// * Read shared values either once or twice, initially this could just be once.
+			// * q: Decompose buildMonitorStruct or add decomposeMonitorStruct?
+			// * Split (for this resource)
+			//   * query and split values out into state
+			//         input:
+			//         'query':
+			//            'min(last_15m):avg:bamboo.server.broker.bamboo.MemoryPercentUsage{*} by {service_name} > 80',
+			//         output should be split and saved into:
+			//            d.keys, d.metric, d.operator, d.space_aggr, tags, time_aggr, time_window
+			//   * name and split values into state
+			//         input:
+			//   	   'name':
+			//            '[warning] TF: Bamboo ActiveMQ Memory Percent Usage',
+			//         output be stored in d.name, but after stripping off [warning] / [critical]
+			//   * message and split values out into message and notification
+			//         input:
+			//         'message':
+			//             'Alert on percent of memory being used by ActiveMQ on Bamboo Server
+			//               {{service_name.name}} @hipchat-Build_Engineering_Alerts',
+			//          output should be stored in d.message, after stripping @foo and storing that
+			//          	in d.warning.notify or d.critical.notify respectively
+			//
+			log.Printf("[DEBUG] read monitor which looks like: %s", m)
+			d.Set("message", m.Message)
+		*/
+	}
 	return nil
 }
 
