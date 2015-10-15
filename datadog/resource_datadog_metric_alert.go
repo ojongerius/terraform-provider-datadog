@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -268,36 +269,115 @@ func resourceDatadogMetricAlertRead(d *schema.ResourceData, meta interface{}) er
 		}
 
 		log.Printf("[DEBUG] monitor %v", m)
-
-		// TODO:
 		/*
-			// * Abstract so that this is reusable by other resources
-			// * Could use regexps with named matches
-			// * Read shared values either once or twice, initially this could just be once.
-			// * q: Decompose buildMonitorStruct or add decomposeMonitorStruct?
-			// * Split (for this resource)
-			//   * query and split values out into state
-			//         input:
-			//         'query':
-			//            'min(last_15m):avg:bamboo.server.broker.bamboo.MemoryPercentUsage{*} by {service_name} > 80',
-			//         output should be split and saved into:
-			//            d.keys, d.metric, d.operator, d.space_aggr, tags, time_aggr, time_window
-			//   * name and split values into state
-			//         input:
-			//   	   'name':
-			//            '[warning] TF: Bamboo ActiveMQ Memory Percent Usage',
-			//         output be stored in d.name, but after stripping off [warning] / [critical]
-			//   * message and split values out into message and notification
-			//         input:
-			//         'message':
-			//             'Alert on percent of memory being used by ActiveMQ on Bamboo Server
-			//               {{service_name.name}} @hipchat-Build_Engineering_Alerts',
-			//          output should be stored in d.message, after stripping @foo and storing that
-			//          	in d.warning.notify or d.critical.notify respectively
-			//
-			log.Printf("[DEBUG] read monitor which looks like: %s", m)
-			d.Set("message", m.Message)
+				* Abstract so that this is reusable by other resources
+				* Could use regexps with named matches
+				* Read shared values either once or twice, initially this could just be once.
+				* q: Decompose buildMonitorStruct or add decomposeMonitorStruct?
+				* Split (for this resource)
+				* query and split values out into state
+				         input:
+				         'query':
+				            'min(last_15m):avg:bamboo.server.broker.bamboo.MemoryPercentUsage{*} by {service_name} > 80',
+				         output should be split and saved into:
+				            d.keys, d.metric, d.operator, d.space_aggr, tags, time_aggr, time_window
+				   * name and split values into state
+				         input:
+					   'name':
+				            '[warning] TF: Bamboo ActiveMQ Memory Percent Usage',
+				         output be stored in d.name, but after stripping off [warning] / [critical]
+				   * message and split values out into message and notification
+				         input:
+				         'message':
+				             'Alert on percent of memory being used by ActiveMQ on Bamboo Server
+				               {{service_name.name}} @hipchat-Build_Engineering_Alerts',
+				          output should be stored in d.message, after stripping @foo and storing that
+						in d.warning.notify or d.critical.notify respectively
+
+			 Note: to test if keys are set: we can use test if it there *before* we decide which regex to use
+				    https://github.com/StefanSchroeder/Golang-Regex-Tutorial/blob/master/01-chapter4.markdown
+				log.Printf("[DEBUG] read monitor which looks like: %s", m)
+				d.Set("message", m.Message)
+			TODO: add test, how *do* we test this?
 		*/
+
+		log.Printf("[DEBUG] working on message %s", m.Message)
+		log.Printf("[DEBUG] working with query %s", m.Query)
+
+		// First handle "name", so we can figure out the log level
+		re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)
+		r := re.FindStringSubmatch(m.Name) // TODO: test if something is in fact there
+		level := r[1]                      // Store this so we can save the contact for in the right place (see below)
+		log.Printf("[DEBUG] found level %s", level)
+		log.Printf("[DEBUG] storing %s", r[2])
+		d.Set("name", r[2])
+
+		res := strings.Split(m.Message, " @")
+		// Move on to message
+		log.Printf("[DEBUG] storing message %s", res[0]) // TODO: make robust
+		d.Set("message", res[0])
+		for k, v := range res {
+			if k == 0 {
+				// The message is the first element, move on to the contacts TODO: handle cases where at-mentions
+				// are embeded/nested in the messages.
+				continue
+			}
+			log.Printf("[DEBUG] storing %s.notify: %s", level, v)
+			d.Set(fmt.Sprintf("%s.notify", level), v)
+		}
+		// On to query TODO: change fmt.Printlns in to log logging, start saving.
+		re_test_multi := regexp.MustCompile(`by {`)
+		result := re_test_multi.MatchString(m.Query)
+		if result {
+			log.Print("[DEBUG] Found multi alert")
+			re = regexp.MustCompile(`(?P<time_aggr>[\w]{3}?)\((?P<time_window>[a-zA-Z0-9_]+?)\):(?P<space_aggr>[a-zA-Z]+?):(?P<metric>[_.a-zA-Z0-9]+){(?P<tags>[a-zA-Z0-9_:*]+?)}\s+by\s+{(?P<keys>[a-zA-Z0-9_*]+?)}\s+(?P<operator>[><=]+?)\s+(?P<threshold>[0-9]+)`)
+		} else {
+			log.Print("[DEBUG] Found simple alert")
+			re = regexp.MustCompile(`(?P<time_aggr>[\w]{3}?)\((?P<time_window>[a-zA-Z0-9_]+?)\):(?P<space_aggr>[a-zA-Z]+?):(?P<metric>[_.a-zA-Z0-9]+){(?P<tags>[a-zA-Z0-9_:*]+?)}\s+(?P<operator>[><=]+?)\s+(?P<threshold>[0-9]+)`)
+		}
+		n1 := re.SubexpNames()
+		subMatches := re.FindAllStringSubmatch(m.Query, -1)
+		log.Printf("[DEBUG] Submatches: %v", subMatches)
+		for k, _ := range n1 {
+			if k > (len(subMatches) - 1) {
+				continue
+			}
+			r2 := subMatches[k]
+			for i, n := range r2 {
+				if n != "" {
+					switch {
+					case n1[i] == "time_aggr":
+						log.Printf("[DEBUG] storing  %s", n1[i])
+						d.Set("time_aggr", n)
+					case n1[i] == "time_window":
+						log.Printf("[DEBUG] storing  %s", n1[i])
+						d.Set("time_window", n)
+					case n1[i] == "space_aggr":
+						log.Printf("[DEBUG] storing  %s", n1[i])
+						d.Set("space_aggr", n)
+					case n1[i] == "metric":
+						log.Printf("[DEBUG] storing  %s", n1[i])
+						d.Set("metric", n)
+					case n1[i] == "tags":
+						log.Printf("[DEBUG] storing  %s", n1[i])
+						d.Set("tags", n)
+					case n1[i] == "keys":
+						log.Printf("[DEBUG] storing  %s", n1[i])
+						d.Set("keys", n)
+					case n1[i] == "operator":
+						d.Set("operator", n)
+					case n1[i] == "threshold":
+						log.Printf("[DEBUG] storing  %s", n1[i])
+						d.Set(fmt.Sprintf("%s.threshold", level), n)
+					}
+				}
+			}
+
+		}
+		log.Printf("[DEBUG] storing  %v", m.Options.NotifyNoData)
+		d.Set("notify_no_data", m.Options.NotifyNoData) // TODO: Need to convert/assert bool?
+		log.Printf("[DEBUG] storing  %v", m.Options.NoDataTimeframe)
+		d.Set("no_data_timeframe", m.Options.NoDataTimeframe) // TODO: Need to convert/assert int?
 	}
 	return nil
 }
