@@ -40,6 +40,7 @@ resource "datadog_service_check" "bar" {
   check = "datadog.agent.up"
   check_count = 3
   tags = ["environment:foo", "host:bar"]
+  keys = ["foo", "bar"]
 
   notify_no_data = false
 }
