@@ -38,6 +38,11 @@ func resourceDatadogServiceCheck() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
+			"keys": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
 			"message": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -85,12 +90,35 @@ func buildServiceCheckStruct(d *schema.ResourceData) *datadog.Monitor {
 
 	tagsParsed := buffer.String()
 
+	// Keys are used for multi alerts
+	var b bytes.Buffer
+	if raw, ok := d.GetOk("keys"); ok {
+		list := raw.([]interface{})
+		b.WriteString(".by(")
+		length := (len(list) - 1)
+		for i, v := range list {
+			b.WriteString(fmt.Sprintf("\"%s\"", v))
+			if i != length {
+				b.WriteString(",")
+			}
+
+		}
+		b.WriteString(")")
+	}
+
+	keys := b.String()
+
 	var monitorName string
 	var query string
 
 	check := d.Get("check").(string)
 	checkCount := d.Get("check_count").(string)
-	query = fmt.Sprintf("\"%s\".over(%s).last(%s).count_by_status()", check, tagsParsed, checkCount)
+
+	// Examples queries
+	// "http.can_connect".over("instance:buildeng_http","production").last(2).count_by_status()
+	// "http.can_connect".over("*").by("host","instance","url").last(2).count_by_status()
+
+	query = fmt.Sprintf("\"%s\".over(%s)%s.last(%s).count_by_status()", check, tagsParsed, keys, checkCount)
 	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", query))
 	monitorName = name
 
