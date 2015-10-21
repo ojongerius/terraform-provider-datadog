@@ -44,13 +44,9 @@ func TestAccDatadogOutlierAlert_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_outlier_alert.foo", "space_aggr", "avg"),
 					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert.foo", "operator", "<"),
-					resource.TestCheckResourceAttr(
 						"datadog_outlier_alert.foo", "notify_no_data", "false"),
 					resource.TestCheckResourceAttr(
 						"datadog_outlier_alert.foo", "algorithm", "mad"),
-					resource.TestCheckResourceAttr(
-						"datadog_outlier_alert.foo", "tolerance", "3"),
 					//TODO: add warning and critical
 				),
 			},
@@ -121,7 +117,6 @@ resource "datadog_outlier_alert" "foo" {
   message = "description for outlier_alert foo"
 
   algorithm = "mad"
-  tolerance = 3.0
 
   metric = "system.load.5"
   tags = ["environment:foo", "host:foo"]
@@ -130,15 +125,14 @@ resource "datadog_outlier_alert" "foo" {
   time_aggr = "avg" // avg, sum, max, min, change, or pct_change
   time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
   space_aggr = "avg" // avg, sum, min, or max
-  operator = "<" // <, <=, >, >=, ==, or !=
 
   warning {
-    threshold = 0
+    threshold = 3.0
     notify = "@hipchat-<name>"
   }
 
   critical {
-    threshold = 0
+    threshold = 2.0
     notify = "@pagerduty"
   }
 
