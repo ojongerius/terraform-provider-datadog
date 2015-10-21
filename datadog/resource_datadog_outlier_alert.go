@@ -52,10 +52,6 @@ func resourceDatadogOutlierAlert() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"operator": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-			},
 			"message": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -88,11 +84,6 @@ func resourceDatadogOutlierAlert() *schema.Resource {
 				Optional: true,
 				Default:  "dbscan",
 			},
-			"tolerance": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  3,
-			},
 		},
 	}
 }
@@ -106,7 +97,6 @@ func buildOutlierAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mo
 	spaceAggr := d.Get("space_aggr").(string)
 	metric := d.Get("metric").(string)
 	algorithm := d.Get("algorithm").(string)
-	tolerance := strconv.Itoa(d.Get("tolerance").(int))
 
 	// Tags are are no separate resource/gettable, so some trickery is needed
 	var buffer bytes.Buffer
@@ -142,17 +132,13 @@ func buildOutlierAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mo
 
 	keys := b.String()
 
-	operator := d.Get("operator").(string)
-
-	query := fmt.Sprintf("%s(%s):outliers(%s:%s{%s} %s, '%s',%s) %s %s", timeAggr,
+	query := fmt.Sprintf("%s(%s):outliers(%s:%s{%s} %s, '%s',%s) > 0", timeAggr,
 		timeWindow,
 		spaceAggr,
 		metric,
 		tagsParsed,
 		keys,
 		algorithm,
-		tolerance,
-		operator,
 		d.Get(fmt.Sprintf("%s.threshold", typeStr)))
 
 	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", query))
