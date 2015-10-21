@@ -1,6 +1,7 @@
 package datadog
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
@@ -13,28 +14,39 @@ import (
 func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, resourceType string) error {
 
 	/*
-		This is the first iteration of of a generic query parser. Should it be renamed
+		This is the first iteration of of a generic query parser. It saves state too, should it be renamed?
 
 	*/
+
 	// Name -this is identical across resources.
 	re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)
-	r := re.FindStringSubmatch(m.Name) // TODO: test if something is in fact there
-	level := r[1]                      // Store this so we can save the contact for in the right place (see below)
+	r := re.FindStringSubmatch(m.Name) // Find check name
+	if r == nil {
+		return errors.New("Name parser error: string match returned nil")
+	}
+	if len(r) < 3 {
+		return errors.New(fmt.Sprintf("Name parser error. Expected: 3. Got: %d", len(r)))
+	}
+	level := r[1] // Store this so we can save the contact for in the right place (see below)
 	log.Printf("[DEBUG] found level %s", level)
-	log.Printf("[DEBUG] storing %s", r[2])
+	log.Printf("[DEBUG] found name %s", r[2])
 	d.Set("name", r[2])
 
 	// Message -this would be identical across resources too
-	res := strings.Split(m.Message, " @")            // TODO: use must compile for this one
-	log.Printf("[DEBUG] storing message %s", res[0]) // TODO: make robust
+	res := strings.Split(m.Message, " @") // TODO: use must compile for this one
+	if res == nil {
+		return errors.New("Message parser error: string split returned nil")
+	}
+
+	log.Printf("[DEBUG] found message %s", res[0])
 	d.Set("message", res[0])
 	for k, v := range res {
 		if k == 0 {
-			// The message is the first element, move on to the contacts TODO: handle cases where at-mentions
-			// are embeded/nested *in* the messages.
+			// The message is the first element, move on to the contact
+			// TODO: handle cases where at-mentions are embedded/nested *in* the messages.
 			continue
 		}
-		log.Printf("[DEBUG] storing %s.notify: %s", level, v)
+		log.Printf("[DEBUG] found %s.notify: %s", level, v)
 		d.Set(fmt.Sprintf("%s.notify", level), v)
 	}
 
@@ -58,43 +70,53 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, reso
 		if k > (len(subMatches) - 1) {
 			continue
 		}
-		// TODO: this depends on the resource at hand, one generic switch should catch all
+		// TODO: Find a way to generate, or let the caller specify the list
 		r2 := subMatches[k]
 		for i, n := range r2 {
 			if n != "" {
 				switch {
-				case n1[i] == "time_aggr":
+				case n1[i] == "time_aggr": // Shared
 					log.Printf("[DEBUG] storing  %s", n1[i])
 					d.Set("time_aggr", n)
-				case n1[i] == "time_window":
+				case n1[i] == "time_window": // Shared
 					log.Printf("[DEBUG] storing  %s", n1[i])
 					d.Set("time_window", n)
-				case n1[i] == "space_aggr":
+				case n1[i] == "space_aggr": // Shared
 					log.Printf("[DEBUG] storing  %s", n1[i])
 					d.Set("space_aggr", n)
-				case n1[i] == "metric":
+				case n1[i] == "metric": // Shared
 					log.Printf("[DEBUG] storing  %s", n1[i])
 					d.Set("metric", n)
-				case n1[i] == "tags":
+				case n1[i] == "tags": // Shared
 					log.Printf("[DEBUG] storing  %s", n1[i])
 					d.Set("tags", n)
-				case n1[i] == "keys":
+				case n1[i] == "keys": // Shared
 					log.Printf("[DEBUG] storing  %s", n1[i])
 					d.Set("keys", n)
-				case n1[i] == "operator":
+				case n1[i] == "operator": // Shared
+					log.Printf("[DEBUG] storing  %s", n1[i])
 					d.Set("operator", n)
-				case n1[i] == "threshold":
+				case n1[i] == "threshold": // Shared
 					log.Printf("[DEBUG] storing  %s", n1[i])
 					d.Set(fmt.Sprintf("%s.threshold", level), n)
+				case n1[i] == "algorithm": // Outlier resource
+					log.Printf("[DEBUG] storing  %s", n1[i])
+					d.Set("algorithm", n)
+				case n1[i] == "check": // Check resource
+					log.Printf("[DEBUG] storing  %s", n1[i])
+					d.Set("check", n)
+				case n1[i] == "renotify_interval": // Check resource
+					log.Printf("[DEBUG] storing  %s", n1[i])
+					d.Set("renotify_interval", n)
 				}
 			}
 		}
 
 	}
 	log.Printf("[DEBUG] storing  %v", m.Options.NotifyNoData)
-	d.Set("notify_no_data", m.Options.NotifyNoData) // TODO: Need to convert/assert bool?
+	d.Set("notify_no_data", m.Options.NotifyNoData)
 	log.Printf("[DEBUG] storing  %v", m.Options.NoDataTimeframe)
-	d.Set("no_data_timeframe", m.Options.NoDataTimeframe) // TODO: Need to convert/assert int?
+	d.Set("no_data_timeframe", m.Options.NoDataTimeframe)
 
 	return nil
 }
