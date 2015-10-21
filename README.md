@@ -88,7 +88,6 @@ resource "datadog_outlier_alert" "foo" {
   message = "description for outlier_alert foo"
 
   algorithm = "mad"
-  tolerance = 3.0
 
   metric = "system.load.5"
   tags = ["environment:foo", "host:foo"]
@@ -97,15 +96,14 @@ resource "datadog_outlier_alert" "foo" {
   time_aggr = "avg"       // avg, sum, max, min, change, or pct_change
   time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
   space_aggr = "avg"      // avg, sum, min, or max
-  operator = "<"          // <, <=, >, >=, ==, or !=
 
   warning {
-    threshold = 0
+    threshold = 3.0         // tolerance
     notify = "@hipchat-<name>"
   }
 
   critical {
-    threshold = 0
+    threshold = 2.0         // tolerance
     notify = "@pagerduty"
   }
 
