@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ojongerius/go-datadog-api"
+	"github.com/zorkian/go-datadog-api"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -87,7 +87,7 @@ func resourceDatadogMetricAlert() *schema.Resource {
 }
 
 // buildMonitorStruct returns a monitor struct
-func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.MetricMonitor {
+func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor {
 	name := d.Get("name").(string)
 	message := d.Get("message").(string)
 	timeAggr := d.Get("time_aggr").(string)
@@ -141,12 +141,12 @@ func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Met
 
 	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", query))
 
-	o := datadog.MetricOptions{
+	o := datadog.Options{
 		NotifyNoData:    d.Get("notify_no_data").(bool),
 		NoDataTimeframe: d.Get("no_data_timeframe").(int),
 	}
 
-	m := datadog.MetricMonitor{
+	m := datadog.Monitor{
 		Type:    "metric alert",
 		Query:   query,
 		Name:    fmt.Sprintf("[%s] %s", typeStr, name),
@@ -161,13 +161,13 @@ func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Met
 func resourceDatadogMetricAlertCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
-	w, err := client.CreateMetricMonitor(buildMetricAlertStruct(d, "warning"))
+	w, err := client.CreateMonitor(buildMetricAlertStruct(d, "warning"))
 
 	if err != nil {
 		return fmt.Errorf("error creating warning: %s", err)
 	}
 
-	c, cErr := client.CreateMetricMonitor(buildMetricAlertStruct(d, "critical"))
+	c, cErr := client.CreateMonitor(buildMetricAlertStruct(d, "critical"))
 
 	if cErr != nil {
 		return fmt.Errorf("error creating warning: %s", cErr)
@@ -286,13 +286,13 @@ func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) 
 	warningBody.Id = warningID
 	criticalBody.Id = criticalID
 
-	wErr := client.UpdateMetricMonitor(warningBody)
+	wErr := client.UpdateMonitor(warningBody)
 
 	if wErr != nil {
 		return fmt.Errorf("error updating warning: %s", wErr.Error())
 	}
 
-	cErr := client.UpdateMetricMonitor(criticalBody)
+	cErr := client.UpdateMonitor(criticalBody)
 
 	if cErr != nil {
 		return fmt.Errorf("error updating critical: %s", cErr.Error())
