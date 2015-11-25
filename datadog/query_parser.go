@@ -1,7 +1,6 @@
 package datadog
 
 import (
-	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
@@ -36,10 +35,10 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, reso
 	re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)
 	r := re.FindStringSubmatch(m.Name) // Find check name
 	if r == nil {
-		return errors.New("Name parser error: string match returned nil")
+		return fmt.Errorf("Name parser error: string match returned nil")
 	}
 	if len(r) < 3 {
-		return errors.New(fmt.Sprintf("Name parser error. Expected: 3. Got: %d", len(r)))
+		return fmt.Errorf("Name parser error. Expected: 3. Got: %d", len(r))
 	}
 	level := r[1] // Store this so we can save the contact for in the right place (see below)
 	log.Printf("[DEBUG] found level %s", level)
@@ -49,7 +48,7 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, reso
 	// Message -this would be identical across resources too
 	res := strings.Split(m.Message, " @")
 	if res == nil {
-		return errors.New("Message parser error: string split returned nil")
+		return fmt.Errorf("Message parser error: string split returned nil")
 	}
 
 	log.Printf("[DEBUG] found message %s", res[0])
@@ -66,8 +65,8 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, reso
 
 	// Query -this needs to receive (a) pattern(s) for each resource. AFAIK the only (considerable) different
 	// resource would be Outliers resource. TODO: add logic to use regexps per type. Map makes sense.
-	re_test_multi := regexp.MustCompile(`by {`)
-	result := re_test_multi.MatchString(m.Query)
+	reTestMulti := regexp.MustCompile(`by {`)
+	result := reTestMulti.MatchString(m.Query)
 	if result {
 		log.Print("[DEBUG] Found multi alert")
 		re = regexp.MustCompile(baseRegexp + conditionRegexp + multiAlertRegexp)
@@ -78,7 +77,7 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, reso
 	n1 := re.SubexpNames()
 	subMatches := re.FindAllStringSubmatch(m.Query, -1)
 	log.Printf("[DEBUG] Submatches: %v", subMatches)
-	for k, _ := range n1 {
+	for k := range n1 {
 		if k > (len(subMatches) - 1) {
 			continue
 		}
