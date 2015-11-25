@@ -10,13 +10,27 @@ import (
 	"strings"
 )
 
+/*
+	Example of simple query:
+	"min(last_15m):avg:stats.aws.vpc_prod_monitoring.ami.count{service_name:gnomes,aws-account-alias:vpc-production} > 3500"
+
+	Example of multi alert query:
+	"avg(last_15m):avg:system.disk.in_use{*} by {host,device} > 0.9"
+*/
+
+const (
+	timeAggrRegexp   = "(?P<time_aggr>[\\w]{3}?)"
+	timeWinRegexp    = "(?P<time_window>[a-zA-Z0-9_]+?)"
+	spaceAggrRegexp  = "(?P<space_aggr>[a-zA-Z]+?)"
+	metricRegexp     = "(?P<metric>[_.a-zA-Z0-9]+)"
+	tagsRegexp       = "{(?P<tags>[a-zA-Z0-9_:*,-]+?)}"
+	baseRegexp       = timeAggrRegexp + "\\(" + timeWinRegexp + "\\):" + spaceAggrRegexp + ":" + metricRegexp + tagsRegexp
+	conditionRegexp  = "\\s+(?P<operator>[><=]+?)\\s+(?P<threshold>[0-9]+)"
+	multiAlertRegexp = "\\s+by\\s+{(?P<keys>[a-zA-Z0-9_*,-]+?)}"
+)
+
 // resourceDatadogQueryParser takes d, with resource data, m containing a monitoring and resourceType a string with the resource name/type.
 func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, resourceType string) error {
-
-	/*
-		This is the first iteration of of a generic query parser. It saves state too, should it be renamed?
-
-	*/
 
 	// Name -this is identical across resources.
 	re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)
@@ -33,7 +47,7 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, reso
 	d.Set("name", r[2])
 
 	// Message -this would be identical across resources too
-	res := strings.Split(m.Message, " @") // TODO: use must compile for this one
+	res := strings.Split(m.Message, " @")
 	if res == nil {
 		return errors.New("Message parser error: string split returned nil")
 	}
@@ -51,17 +65,15 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, reso
 	}
 
 	// Query -this needs to receive (a) pattern(s) for each resource. AFAIK the only (considerable) different
-	// resource would be Outliers. TODO: add logic to use regexps per type. Map makes sense.
+	// resource would be Outliers resource. TODO: add logic to use regexps per type. Map makes sense.
 	re_test_multi := regexp.MustCompile(`by {`)
 	result := re_test_multi.MatchString(m.Query)
 	if result {
 		log.Print("[DEBUG] Found multi alert")
-		re = regexp.MustCompile(`(?P<time_aggr>[\w]{3}?)\((?P<time_window>[a-zA-Z0-9_]+?)\):(?P<space_aggr>[a-zA-Z]+?):(?P<metric>[_.a-zA-Z0-9]+){(?P<tags>[a-zA-Z0-9_:*]+?)}\s+by\s+{(?P<keys>[a-zA-Z0-9_*]+?)}\s+(?P<operator>[><=]+?)\s+(?P<threshold>[0-9]+)`)
-		// TODO: ^^ Break this up in multiple constants
+		re = regexp.MustCompile(baseRegexp + conditionRegexp + multiAlertRegexp)
 	} else {
 		log.Print("[DEBUG] Found simple alert")
-		re = regexp.MustCompile(`(?P<time_aggr>[\w]{3}?)\((?P<time_window>[a-zA-Z0-9_]+?)\):(?P<space_aggr>[a-zA-Z]+?):(?P<metric>[_.a-zA-Z0-9]+){(?P<tags>[a-zA-Z0-9_:*]+?)}\s+(?P<operator>[><=]+?)\s+(?P<threshold>[0-9]+)`)
-		// TODO: ^^ Break this up in multiple constants
+		re = regexp.MustCompile(baseRegexp + multiAlertRegexp)
 	}
 	n1 := re.SubexpNames()
 	subMatches := re.FindAllStringSubmatch(m.Query, -1)
