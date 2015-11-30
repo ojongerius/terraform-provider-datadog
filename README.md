@@ -51,6 +51,7 @@ resource "datadog_service_check" "bar" {
 Example configuration:
 
 ``` HCL
+resource "datadog_metric_alert" "foo" {
   name = "CPU alert for {{host.name}}"
   message = "CPU alert failed on {{host.name}} in environment {{host.environment}}"
 
