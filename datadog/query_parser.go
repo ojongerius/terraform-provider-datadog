@@ -15,6 +15,9 @@ import (
 
 	Example of multi alert query:
 	"avg(last_15m):avg:system.disk.in_use{*} by {host,device} > 0.9"
+
+    Outliers query (inherently a multi alert):
+	"avg(last_1h):outliers(avg:system.fs.inodes.in_use{*} by {host},'dbscan',2) > 0"
 */
 
 const (
@@ -26,6 +29,9 @@ const (
 	baseRegexp       = timeAggrRegexp + "\\(" + timeWinRegexp + "\\):" + spaceAggrRegexp + ":" + metricRegexp + tagsRegexp
 	conditionRegexp  = "\\s+(?P<operator>[><=]+?)\\s+(?P<threshold>[0-9]+)"
 	multiAlertRegexp = "\\s+by\\s+{(?P<keys>[a-zA-Z0-9_*,-]+?)}"
+	algorithmRegexp  = "'(?P<algorithm>[a-zA-Z]+)'"
+	tresholdRegexep  = "(?P<treshold>[0-9]+)"
+	outlierRegexp    = timeAggrRegexp + "\\(" + timeWinRegexp + "\\):outliers\\(" + spaceAggrRegexp + ":" + metricRegexp + tagsRegexp + multiAlertRegexp + "," + algorithmRegexp + "," + tresholdRegexep + "\\)"
 )
 
 // resourceDatadogQueryParser takes d, with resource data, m containing a monitoring and resourceType a string with the resource name/type.
@@ -63,20 +69,30 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) erro
 		d.Set(fmt.Sprintf("%s.notify", level), v)
 	}
 
-	// Query -this needs to receive (a) pattern(s) for each resource. AFAIK the only (considerable) different
-	// resource would be Outliers resource. TODO: add logic to use regexps per type. Map makes sense.
-	reTestMulti := regexp.MustCompile(`by {`)
-	result := reTestMulti.MatchString(m.Query)
-	if result {
-		log.Print("[DEBUG] Found multi alert")
-		re = regexp.MustCompile(baseRegexp + conditionRegexp + multiAlertRegexp)
+	// If it's an outlier, use seperare regular expression. Outliers can only be grouped, and hence multi alerts.
+	if strings.Contains(m.Query, "outliers") {
+		log.Print("[DEBUG] is Outlier alert")
+		// TODO: Outlier alerts *have* to be multi alert, handle that a little more elegant.
+		re = regexp.MustCompile(outlierRegexp + conditionRegexp)
+		log.Printf("[DEBUG] setting regexp to: %s", outlierRegexp+conditionRegexp)
 	} else {
-		log.Print("[DEBUG] Found simple alert")
-		re = regexp.MustCompile(baseRegexp + multiAlertRegexp)
+		// No outlier, test if it's a simple or "multi alert" monitor
+		reTestMulti := regexp.MustCompile(`by {`)
+		result := reTestMulti.MatchString(m.Query)
+		if result {
+			log.Print("[DEBUG] Found multi alert")
+			re = regexp.MustCompile(baseRegexp + multiAlertRegexp + conditionRegexp)
+			log.Printf("[DEBUG] setting regexp to: %s", baseRegexp+multiAlertRegexp+conditionRegexp)
+		} else {
+			log.Print("[DEBUG] Found simple alert")
+			re = regexp.MustCompile(baseRegexp + conditionRegexp)
+			log.Printf("[DEBUG] setting regexp to: %s", baseRegexp+conditionRegexp)
+		}
 	}
 	n1 := re.SubexpNames()
+	log.Printf("[DEBUG] query: %s", m.Query)
 	subMatches := re.FindAllStringSubmatch(m.Query, -1)
-	log.Printf("[DEBUG] Submatches: %v", subMatches)
+	log.Printf("[DEBUG] submatches: %v", subMatches)
 	for k := range n1 {
 		if k > (len(subMatches) - 1) {
 			continue
@@ -87,46 +103,46 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) erro
 			if n != "" {
 				switch {
 				case n1[i] == "time_aggr": // Shared
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing time_aggr: %s", n1[i])
 					d.Set("time_aggr", n)
 				case n1[i] == "time_window": // Shared
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing time_window: %s", n1[i])
 					d.Set("time_window", n)
 				case n1[i] == "space_aggr": // Shared
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing  space_aggr: %s", n1[i])
 					d.Set("space_aggr", n)
 				case n1[i] == "metric": // Shared
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing metric: %s", n1[i])
 					d.Set("metric", n)
 				case n1[i] == "tags": // Shared
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing tags: %s", n1[i])
 					d.Set("tags", n)
 				case n1[i] == "keys": // Shared
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing keys: %s", n1[i])
 					d.Set("keys", n)
 				case n1[i] == "operator": // Shared
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing operator: %s", n1[i])
 					d.Set("operator", n)
 				case n1[i] == "threshold": // Shared
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing threshold: %s", n1[i])
 					d.Set(fmt.Sprintf("%s.threshold", level), n)
 				case n1[i] == "algorithm": // Outlier resource
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing algorithm: %s", n1[i])
 					d.Set("algorithm", n)
 				case n1[i] == "check": // Check resource
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing check: %s", n1[i])
 					d.Set("check", n)
 				case n1[i] == "renotify_interval": // Check resource
-					log.Printf("[DEBUG] storing  %s", n1[i])
+					log.Printf("[DEBUG] storing renotify_interval: %s", n1[i])
 					d.Set("renotify_interval", n)
 				}
 			}
 		}
 
 	}
-	log.Printf("[DEBUG] storing  %v", m.Options.NotifyNoData)
+	log.Printf("[DEBUG] storing notify_no_data: %v", m.Options.NotifyNoData)
 	d.Set("notify_no_data", m.Options.NotifyNoData)
-	log.Printf("[DEBUG] storing  %v", m.Options.NoDataTimeframe)
+	log.Printf("[DEBUG] storing nodata_time_frame: %v", m.Options.NoDataTimeframe)
 	d.Set("no_data_timeframe", m.Options.NoDataTimeframe)
 
 	return nil
