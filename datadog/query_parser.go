@@ -37,7 +37,7 @@ const (
 // resourceDatadogQueryParser takes d, with resource data, m containing a monitoring and resourceType a string with the resource name/type.
 func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) error {
 
-	// Name -this is identical across resources.
+	// Name
 	re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)
 	r := re.FindStringSubmatch(m.Name) // Find check name
 	if r == nil {
@@ -51,7 +51,7 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) erro
 	log.Printf("[DEBUG] found name %s", r[2])
 	d.Set("name", r[2])
 
-	// Message -this would be identical across resources too
+	// Message
 	res := strings.Split(m.Message, " @")
 	if res == nil {
 		return fmt.Errorf("Message parser error: string split returned nil")
@@ -69,14 +69,13 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) erro
 		d.Set(fmt.Sprintf("%s.notify", level), v)
 	}
 
-	// If it's an outlier, use seperare regular expression. Outliers can only be grouped, and hence multi alerts.
+	// If it is an outlier, use seperate regular expression. Outliers can only be grouped, and hence alway are multi alerts.
 	if strings.Contains(m.Query, "outliers") {
 		log.Print("[DEBUG] is Outlier alert")
-		// TODO: Outlier alerts *have* to be multi alert, handle that a little more elegant.
 		re = regexp.MustCompile(outlierRegexp + conditionRegexp)
 		log.Printf("[DEBUG] setting regexp to: %s", outlierRegexp+conditionRegexp)
 	} else {
-		// No outlier, test if it's a simple or "multi alert" monitor
+		// No outlier? Test if it is a simple or a "multi alert" monitor
 		reTestMulti := regexp.MustCompile(`by {`)
 		result := reTestMulti.MatchString(m.Query)
 		if result {
