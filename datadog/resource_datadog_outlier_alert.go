@@ -16,7 +16,7 @@ import (
 func resourceDatadogOutlierAlert() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogOutlierAlertCreate,
-		Read:   resourceDatadogOutlierAlertRead,
+		Read:   resourceDatadogGenericRead,
 		Update: resourceDatadogOutlierAlertUpdate,
 		Delete: resourceDatadogOutlierAlertDelete,
 		Exists: resourceDatadogGenericExists,
@@ -205,18 +205,6 @@ func resourceDatadogOutlierAlertDelete(d *schema.ResourceData, meta interface{})
 			return err
 		}
 	}
-	return nil
-}
-
-// resourceDatadogOutlierAlertRead synchronises Datadog and local state .
-func resourceDatadogOutlierAlertRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO: add support for this a read function.
-	/* Read - This is called to resync the local state with the remote state.
-	Terraform guarantees that an existing ID will be set. This ID should be
-	used to look up the resource. Any remote data should be updated into the
-	local data. No changes to the remote resource are to be made.
-	*/
-
 	return nil
 }
 

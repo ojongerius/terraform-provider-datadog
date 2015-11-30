@@ -29,7 +29,7 @@ const (
 )
 
 // resourceDatadogQueryParser takes d, with resource data, m containing a monitoring and resourceType a string with the resource name/type.
-func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor, resourceType string) error {
+func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) error {
 
 	// Name -this is identical across resources.
 	re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)

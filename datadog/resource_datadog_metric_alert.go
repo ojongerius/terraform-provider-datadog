@@ -16,7 +16,7 @@ import (
 func resourceDatadogMetricAlert() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogMetricAlertCreate,
-		Read:   resourceDatadogMetricAlertRead,
+		Read:   resourceDatadogGenericRead,
 		Update: resourceDatadogMetricAlertUpdate,
 		Delete: resourceDatadogMetricAlertDelete,
 		Exists: resourceDatadogGenericExists,
@@ -199,36 +199,6 @@ func resourceDatadogMetricAlertDelete(d *schema.ResourceData, meta interface{}) 
 			return err
 		}
 	}
-	return nil
-}
-
-// resourceDatadogMetricAlertRead synchronises Datadog and local state .
-func resourceDatadogMetricAlertRead(d *schema.ResourceData, meta interface{}) error {
-
-	client := meta.(*datadog.Client)
-	for _, v := range strings.Split(d.Id(), "__") {
-		if v == "" {
-			return fmt.Errorf("Id not set.")
-		}
-		ID, iErr := strconv.Atoi(v)
-
-		if iErr != nil {
-			return iErr
-		}
-
-		m, err := client.GetMonitor(ID)
-
-		if err != nil {
-			return err
-		}
-
-		err = resourceDatadogQueryParser(d, m, "metric_alert")
-
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
