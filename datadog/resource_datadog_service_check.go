@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
@@ -18,7 +17,7 @@ func resourceDatadogServiceCheck() *schema.Resource {
 		Read:   resourceDatadogServiceCheckRead,
 		Update: resourceDatadogServiceCheckUpdate,
 		Delete: resourceDatadogServiceCheckDelete,
-		Exists: resourceDatadogServiceCheckExists,
+		Exists: resourceDatadogGenericExists,
 
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
@@ -171,32 +170,6 @@ func resourceDatadogServiceCheckDelete(d *schema.ResourceData, meta interface{})
 		return err
 	}
 	return nil
-}
-
-// resourceDatadogServiceCheckExists verifies a monitor exists.
-func resourceDatadogServiceCheckExists(d *schema.ResourceData, meta interface{}) (b bool, e error) {
-	// Exists - This is called to verify a resource still exists. It is called prior to Read,
-	// and lowers the burden of Read to be able to assume the resource exists.
-
-	client := meta.(*datadog.Client)
-
-	log.Print("[DEBUG] verifying service check exists")
-	ID, err := strconv.Atoi(d.Id())
-	if err != nil {
-		return false, err
-	}
-
-	_, err = client.GetMonitor(ID)
-
-	if err != nil {
-		if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
-			log.Printf("[DEBUG] Service Check does not exist: %s", err)
-			return false, nil
-		}
-		return false, err
-	}
-
-	return true, nil
 }
 
 // resourceDatadogServiceCheckRead synchronises Datadog and local state .

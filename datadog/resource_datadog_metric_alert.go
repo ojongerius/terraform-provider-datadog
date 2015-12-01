@@ -16,10 +16,10 @@ import (
 func resourceDatadogMetricAlert() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogMetricAlertCreate,
-		Read:   resourceDatadogMetricAlertRead,
+		Read:   resourceDatadogGenericRead,
 		Update: resourceDatadogMetricAlertUpdate,
 		Delete: resourceDatadogMetricAlertDelete,
-		Exists: resourceDatadogMetricAlertExists,
+		Exists: resourceDatadogGenericExists,
 
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
@@ -199,54 +199,6 @@ func resourceDatadogMetricAlertDelete(d *schema.ResourceData, meta interface{}) 
 			return err
 		}
 	}
-	return nil
-}
-
-// resourceDatadogMetricAlertExists verifies a monitor exists.
-func resourceDatadogMetricAlertExists(d *schema.ResourceData, meta interface{}) (b bool, e error) {
-	// Exists - This is called to verify a resource still exists. It is called prior to Read,
-	// and lowers the burden of Read to be able to assume the resource exists.
-
-	client := meta.(*datadog.Client)
-
-	exists := false
-	for _, v := range strings.Split(d.Id(), "__") {
-		if v == "" {
-			log.Printf("[DEBUG] Could not parse IDs: %s", v)
-			return false, fmt.Errorf("Id not set.")
-		}
-		ID, iErr := strconv.Atoi(v)
-
-		if iErr != nil {
-			log.Printf("[DEBUG] Received error converting string: %s", iErr)
-			return false, iErr
-		}
-		_, err := client.GetMonitor(ID)
-		if err != nil {
-			if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
-				log.Printf("[DEBUG] monitor does not exist: %s", err)
-				exists = false
-				continue
-			} else {
-				e = err
-				continue
-			}
-		}
-		exists = true
-	}
-
-	return exists, nil
-}
-
-// resourceDatadogMetricAlertRead synchronises Datadog and local state .
-func resourceDatadogMetricAlertRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO: add support for this a read function.
-	/* Read - This is called to resync the local state with the remote state.
-	Terraform guarantees that an existing ID will be set. This ID should be
-	used to look up the resource. Any remote data should be updated into the
-	local data. No changes to the remote resource are to be made.
-	*/
-
 	return nil
 }
 
