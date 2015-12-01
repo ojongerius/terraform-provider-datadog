@@ -51,11 +51,10 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 
 	// Set default to false
 	exists := false
-	count := 0
-	existCount := 0
-	existingMonitorIDs := make([]int, 0)
+	expectedCount := 0
+	actualCount := 0
 	for _, v := range strings.Split(d.Id(), "__") {
-		count += 1
+		expectedCount += 1
 		if v == "" {
 			log.Printf("[DEBUG] Could not parse IDs: %s", v)
 			return false, fmt.Errorf("Id not set.")
@@ -79,27 +78,13 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 				continue
 			}
 		}
-		existCount += 1
-		// Save existing monitor in case we need to remove it
-		existingMonitorIDs = append(existingMonitorIDs, ID)
+		actualCount += 1
 		log.Printf("[DEBUG] found monitor %s", v)
 		exists = true
 	}
 
-	if count != existCount && existCount > 0 {
-		// There are monitors, but not all of them all present. Delete the ones that are and return false so Terraform can
-		// recreate the monitors. This may be considered controversial.
-		log.Printf("[DEBUG monitor state count: %d", count)
-		log.Printf("[DEBUG monitor exist count: %d", existCount)
-		log.Printf("[DEBUG] found %d monitors, but expected %d, removing existing ones to allow recreation of the whole resource..", count, existCount)
-		for m := range existingMonitorIDs {
-			e = client.DeleteMonitor(existingMonitorIDs[m])
-			if e != nil {
-				log.Printf("[ERROR] error removing leftover monitor %d", existingMonitorIDs[m])
-				return false, e
-			}
-		}
-		return false, nil
+	if expectedCount != actualCount && actualCount > 0 {
+		return false, fmt.Errorf("found %d monitors, but expected %d. Please taint this resource with 'terraform taint $RESOURCETYPE.$RESOURCENAME' and recreate it with 'terraform apply'", actualCount, expectedCount)
 	}
 
 	return exists, e
