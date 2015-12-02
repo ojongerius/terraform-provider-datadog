@@ -30,12 +30,11 @@ const (
 	conditionRegexp  = "\\s+(?P<operator>[><=]+?)\\s+(?P<threshold>[0-9]+)"
 	multiAlertRegexp = "\\s+by\\s+{(?P<keys>[a-zA-Z0-9_*,-]+?)}"
 	algorithmRegexp  = "'(?P<algorithm>[a-zA-Z]+)'"
-	thresholdRegexp  = "(?P<treshold>[0-9]+)"
-	outlierRegexp    = timeAggrRegexp + "\\(" + timeWinRegexp + "\\):outliers\\(" + spaceAggrRegexp + ":" + metricRegexp + tagsRegexp + multiAlertRegexp + "," + algorithmRegexp + "," + tresholdRegexp + "\\)"
+	thresholdRegexp  = "(?P<threshold>[0-9]+)"
+	outlierRegexp    = timeAggrRegexp + "\\(" + timeWinRegexp + "\\):outliers\\(" + spaceAggrRegexp + ":" + metricRegexp + tagsRegexp + multiAlertRegexp + "," + algorithmRegexp + "," + thresholdRegexp + "\\)"
 )
 
 func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) error {
-
 	// Name
 	re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)
 	r := re.FindStringSubmatch(m.Name) // Find check name
