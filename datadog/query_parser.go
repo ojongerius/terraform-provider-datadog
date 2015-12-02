@@ -30,11 +30,10 @@ const (
 	conditionRegexp  = "\\s+(?P<operator>[><=]+?)\\s+(?P<threshold>[0-9]+)"
 	multiAlertRegexp = "\\s+by\\s+{(?P<keys>[a-zA-Z0-9_*,-]+?)}"
 	algorithmRegexp  = "'(?P<algorithm>[a-zA-Z]+)'"
-	tresholdRegexep  = "(?P<treshold>[0-9]+)"
-	outlierRegexp    = timeAggrRegexp + "\\(" + timeWinRegexp + "\\):outliers\\(" + spaceAggrRegexp + ":" + metricRegexp + tagsRegexp + multiAlertRegexp + "," + algorithmRegexp + "," + tresholdRegexep + "\\)"
+	thresholdRegexp  = "(?P<treshold>[0-9]+)"
+	outlierRegexp    = timeAggrRegexp + "\\(" + timeWinRegexp + "\\):outliers\\(" + spaceAggrRegexp + ":" + metricRegexp + tagsRegexp + multiAlertRegexp + "," + algorithmRegexp + "," + tresholdRegexp + "\\)"
 )
 
-// resourceDatadogQueryParser takes d, with resource data, m containing a monitoring and resourceType a string with the resource name/type.
 func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) error {
 
 	// Name
@@ -69,7 +68,7 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) erro
 		d.Set(fmt.Sprintf("%s.notify", level), v)
 	}
 
-	// If it is an outlier, use seperate regular expression. Outliers can only be grouped, and hence alway are multi alerts.
+	// If it is an outlier, use separate regular expression. Outliers can only be grouped, and hence alway are multi alerts.
 	if strings.Contains(m.Query, "outliers") {
 		log.Print("[DEBUG] is Outlier alert")
 		re = regexp.MustCompile(outlierRegexp + conditionRegexp)
