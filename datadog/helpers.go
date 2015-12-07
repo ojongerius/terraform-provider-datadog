@@ -42,26 +42,16 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 			return err
 		}
 
-		// TODO:
-		// To detect if any of the remote values have changed (a change could
-		// be that no longer exists) we need to:
-		// * fetch the state in here
-		// * make sure // both removes have the same value (apart from the warning or critical value)
-		// . If *either* one of warning and critical have different values, we need to
-		// save *different* value, so Update will see it, and a planning run will
-		// reflect those changes.
-		// ^^ problem: the diff will look a little inaccurate / shit
 		monitors[i], err = resourceDatadogQueryParser(d, m)
 		if err != nil {
 			return err
 		}
 
-		//monitors = append(monitors, monitor)
 	}
 
 	log.Printf("[DEBUG] XX amount of monitors: %v", len(monitors))
 
-	// Better, less tedious way to do this?
+	// TODO: Better, less tedious way to do this?
 	for _, m := range monitors {
 		log.Printf("[DEBUG] XX monitor: %v", m)
 		if m.Name != "" {
@@ -128,8 +118,6 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 		}
 	}
 
-	// Why is change not picked up?
-
 	return nil
 }
 
@@ -144,10 +132,7 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 
 	// Set default to false
 	exists := false
-	//expectedCount := 0
-	//actualCount := 0
 	for _, v := range strings.Split(d.Id(), "__") {
-		//expectedCount += 1
 		if v == "" {
 			log.Printf("[DEBUG] Could not parse IDs: %s", v)
 			return false, fmt.Errorf("Id not set.")
@@ -170,17 +155,9 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 				continue
 			}
 		}
-		//actualCount += 1
 		log.Printf("[DEBUG] found monitor %s", v)
 		exists = true
 	}
-
-	/*
-		// TODO: fix this. Find solution other branch ( too late figure out what )
-		if expectedCount != actualCount && actualCount > 0 {
-			return false, fmt.Errorf("found %d monitors, but expected %d. Please taint this resource with 'terraform taint $RESOURCETYPE.$RESOURCENAME' and recreate it with 'terraform apply'", actualCount, expectedCount)
-		}
-	*/
 
 	return exists, e
 }

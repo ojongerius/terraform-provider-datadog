@@ -22,7 +22,6 @@ import (
 */
 
 type subDatadogMonitor struct {
-	// TODO: check types
 	Name             string
 	Message          string
 	Notify           string // how would we store this? .Set(fmt.Sprintf("%s.notify", level), v)
@@ -39,7 +38,6 @@ type subDatadogMonitor struct {
 	ReNotifyInterval string // check Type
 	NotifyNoData     bool
 	NoDataTimeFrame  int
-	Recreate         bool
 }
 
 const (
@@ -57,14 +55,6 @@ const (
 )
 
 func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) (subDatadogMonitor, error) {
-	/* Plan:
-	- Create 2 internal / temporary representations, one for each monitor, when we've
-		done those we can compare and action based on it.
-		TODO: refactor to either do both in here, *or* return data so the caller can diff
-		      and act on the results.
-		      * Refactor to return struct instead of Set.
-		      *    ,,    to attack both monitors, and keep Setting withing this function.
-	*/
 
 	monitor := subDatadogMonitor{}
 	// Name
