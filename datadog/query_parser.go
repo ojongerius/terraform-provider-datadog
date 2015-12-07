@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
 	"log"
+	"reflect"
 	"regexp"
 	"strings"
 )
@@ -20,6 +21,27 @@ import (
 	"avg(last_1h):outliers(avg:system.fs.inodes.in_use{*} by {host},'dbscan',2) > 0"
 */
 
+type subDatadogMonitor struct {
+	// TODO: check types
+	Name             string
+	Message          string
+	Notify           string // how would we store this? .Set(fmt.Sprintf("%s.notify", level), v)
+	TimeAggregate    string // check if not int
+	TimeWindow       string
+	SpaceAggregate   string
+	Metric           string
+	Tags             []interface{}
+	Keys             []interface{}
+	Operator         string
+	Threshold        string // correct type? this should be stored as for example warning.threshold 5
+	Algorithm        string
+	Check            string
+	ReNotifyInterval string // check Type
+	NotifyNoData     bool
+	NoDataTimeFrame  int
+	Recreate         bool
+}
+
 const (
 	timeAggrRegexp   = "(?P<time_aggr>[\\w]{3}?)"
 	timeWinRegexp    = "(?P<time_window>[a-zA-Z0-9_]+?)"
@@ -34,29 +56,47 @@ const (
 	outlierRegexp    = timeAggrRegexp + "\\(" + timeWinRegexp + "\\):outliers\\(" + spaceAggrRegexp + ":" + metricRegexp + tagsRegexp + multiAlertRegexp + "," + algorithmRegexp + "," + thresholdRegexp + "\\)"
 )
 
-func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) error {
+func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) (subDatadogMonitor, error) {
+	/* Plan:
+	- Create 2 internal / temporary representations, one for each monitor, when we've
+		done those we can compare and action based on it.
+		TODO: refactor to either do both in here, *or* return data so the caller can diff
+		      and act on the results.
+		      * Refactor to return struct instead of Set.
+		      *    ,,    to attack both monitors, and keep Setting withing this function.
+	*/
+
+	monitor := subDatadogMonitor{}
 	// Name
 	re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)
 	r := re.FindStringSubmatch(m.Name) // Find check name
 	if r == nil {
-		return fmt.Errorf("Name parser error: string match returned nil")
+		return monitor, fmt.Errorf("Name parser error: string match returned nil")
 	}
 	if len(r) < 3 {
-		return fmt.Errorf("Name parser error. Expected: 3. Got: %d", len(r))
+		return monitor, fmt.Errorf("Name parser error. Expected: 3. Got: %d", len(r))
 	}
 	level := r[1] // Store this so we can save the contact for in the right place (see below)
 	log.Printf("[DEBUG] found level %s", level)
 	log.Printf("[DEBUG] found name %s", r[2])
-	d.Set("name", r[2])
+
+	if r[2] != d.Get("name") {
+		log.Printf("[DEBUG] XX name was: %s found: %s", d.Get("name"), r[2])
+		monitor.Name = r[2]
+	}
 
 	// Message
 	res := strings.Split(m.Message, " @")
 	if res == nil {
-		return fmt.Errorf("Message parser error: string split returned nil")
+		return monitor, fmt.Errorf("Message parser error: string split returned nil")
 	}
 
 	log.Printf("[DEBUG] found message %s", res[0])
-	d.Set("message", res[0])
+	if res[0] != d.Get("message") {
+		log.Printf("[DEBUG] XX message was: %s found: %s", d.Get("name"), res[0])
+		monitor.Message = res[0]
+	}
+
 	for k, v := range res {
 		if k == 0 {
 			// The message is the first element, move on to the contact
@@ -64,7 +104,10 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) erro
 			continue
 		}
 		log.Printf("[DEBUG] found %s.notify: %s", level, v)
-		d.Set(fmt.Sprintf("%s.notify", level), v)
+		if fmt.Sprintf("@%s", v) != d.Get(fmt.Sprintf("%s.notify", level)) {
+			log.Printf("[DEBUG] XX %s.notify was: %s found: %s", level, d.Get(fmt.Sprintf("%s.notify", level)), v)
+			monitor.Notify = v
+		}
 	}
 
 	// If it is an outlier, use separate regular expression. Outliers can only be grouped, and hence alway are multi alerts.
@@ -100,47 +143,122 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) erro
 			if n != "" {
 				switch {
 				case n1[i] == "time_aggr": // Shared
-					log.Printf("[DEBUG] storing time_aggr: %s", n1[i])
-					d.Set("time_aggr", n)
+					// This is tedious, use helper?
+					if v, ok := d.GetOk("time_aggr"); ok {
+						if n != v {
+							log.Printf("[DEBUG] XX storing %s: %s", n1[i], n)
+							monitor.TimeAggregate = n
+						}
+					}
 				case n1[i] == "time_window": // Shared
-					log.Printf("[DEBUG] storing time_window: %s", n1[i])
-					d.Set("time_window", n)
+					// This is tedious, use helper?
+					if v, ok := d.GetOk("time_window"); ok {
+						if n != v {
+							log.Printf("[DEBUG] XX storing %s: %s", n1[i], n)
+							monitor.TimeWindow = n
+						}
+					}
 				case n1[i] == "space_aggr": // Shared
-					log.Printf("[DEBUG] storing  space_aggr: %s", n1[i])
-					d.Set("space_aggr", n)
+					// This is tedious, use helper?
+					if v, ok := d.GetOk("space_aggr"); ok {
+						if n != v {
+							log.Printf("[DEBUG] XX storing %s: %s", n1[i], n)
+							monitor.SpaceAggregate = n
+						}
+					}
 				case n1[i] == "metric": // Shared
-					log.Printf("[DEBUG] storing metric: %s", n1[i])
-					d.Set("metric", n)
+					if v, ok := d.GetOk("metric"); ok {
+						if n != v {
+							log.Printf("[DEBUG] XX storing %s. Old: %s, new: %s", n1[i], v, n)
+							monitor.Metric = n
+						}
+					}
 				case n1[i] == "tags": // Shared
-					log.Printf("[DEBUG] storing tags: %s", n1[i])
-					d.Set("tags", n)
+					// TODO: move into helper function for tags and keys
+					if v, ok := d.GetOk("tags"); ok {
+						t := strings.Split(n, ",")
+						temp := make([]interface{}, len(t))
+						for i := range t {
+							temp[i] = t[i]
+						}
+						log.Printf("[DEBUG] XX found: %s. Old: %v, new: %s", n1[i], v, temp)
+						log.Printf("[DEBUG] XX found %s. Type old: %v, Type new: %s", n1[i], reflect.TypeOf(v), reflect.TypeOf(temp))
+
+						if reflect.DeepEqual(v, temp) {
+							log.Printf("[DEBUG] XX storing %s. Old: %v, new: %s", n1[i], v, temp)
+							log.Printf("[DEBUG] XX storing %s. Type old: %v, Type new: %s", n1[i], reflect.TypeOf(v), reflect.TypeOf(temp))
+
+							monitor.Tags = temp
+						}
+					}
 				case n1[i] == "keys": // Shared
-					log.Printf("[DEBUG] storing keys: %s", n1[i])
-					d.Set("keys", n)
+					// TODO: move into helper function for tags and keys
+					if v, ok := d.GetOk("keys"); ok {
+						t := strings.Split(n, ",")
+						temp := make([]interface{}, len(t))
+						for i := range t {
+							temp[i] = t[i]
+						}
+						log.Printf("[DEBUG] XX found: %s. Old: %v, new: %s", n1[i], v, temp)
+						log.Printf("[DEBUG] XX found %s. Type old: %v, Type new: %s", n1[i], reflect.TypeOf(v), reflect.TypeOf(temp))
+
+						if reflect.DeepEqual(v, temp) {
+							log.Printf("[DEBUG] XX storing %s. Old: %v, new: %s", n1[i], v, temp)
+							log.Printf("[DEBUG] XX storing %s. Type old: %v, Type new: %s", n1[i], reflect.TypeOf(v), reflect.TypeOf(temp))
+
+							monitor.Keys = temp
+						}
+					}
 				case n1[i] == "operator": // Shared
-					log.Printf("[DEBUG] storing operator: %s", n1[i])
-					d.Set("operator", n)
+					if v, ok := d.GetOk("operator"); ok {
+						if n != v {
+							log.Printf("[DEBUG] XX storing %s: %s", n1[i], n)
+							monitor.Operator = n
+						}
+					}
 				case n1[i] == "threshold": // Shared
-					log.Printf("[DEBUG] storing threshold: %s", n1[i])
-					d.Set(fmt.Sprintf("%s.threshold", level), n)
+					if v, ok := d.GetOk("treshold"); ok {
+						if n != v {
+							log.Printf("[DEBUG] XX storing %s: %s", n1[i], n)
+							monitor.Threshold = n
+						}
+					}
 				case n1[i] == "algorithm": // Outlier resource
-					log.Printf("[DEBUG] storing algorithm: %s", n1[i])
-					d.Set("algorithm", n)
+					if v, ok := d.GetOk("algorithm"); ok {
+						if n != v {
+							log.Printf("[DEBUG] XX storing %s: %s", n1[i], n)
+							monitor.Algorithm = n
+						}
+					}
 				case n1[i] == "check": // Check resource
-					log.Printf("[DEBUG] storing check: %s", n1[i])
-					d.Set("check", n)
+					if v, ok := d.GetOk("check"); ok {
+						if n != v {
+							log.Printf("[DEBUG] XX storing %s: %s", n1[i], n)
+							monitor.Check = n
+						}
+					}
 				case n1[i] == "renotify_interval": // Check resource
-					log.Printf("[DEBUG] storing renotify_interval: %s", n1[i])
-					d.Set("renotify_interval", n)
+					if v, ok := d.GetOk("renotify_interval"); ok {
+						if n != v {
+							log.Printf("[DEBUG] XX storing %s: %s", n1[i], n)
+							monitor.ReNotifyInterval = n
+						}
+					}
 				}
 			}
 		}
-
 	}
 	log.Printf("[DEBUG] storing notify_no_data: %v", m.Options.NotifyNoData)
-	d.Set("notify_no_data", m.Options.NotifyNoData)
-	log.Printf("[DEBUG] storing nodata_time_frame: %v", m.Options.NoDataTimeframe)
-	d.Set("no_data_timeframe", m.Options.NoDataTimeframe)
+	if m.Options.NotifyNoData != d.Get("notify_no_data") {
+		log.Printf("[DEBUG] XX notify_no_data was: %t found: %t", d.Get("notify_no_data"), m.Options.NotifyNoData)
+		monitor.NotifyNoData = m.Options.NotifyNoData
+	}
 
-	return nil
+	log.Printf("[DEBUG] storing nodata_time_frame: %v", m.Options.NoDataTimeframe)
+	if m.Options.NoDataTimeframe != d.Get("no_data_timeframe") {
+		log.Printf("[DEBUG] XX fy_no_data_timeframe was: %d found: %d", d.Get("no_data_timeframe"), m.Options.NoDataTimeframe)
+		monitor.NoDataTimeFrame = m.Options.NoDataTimeframe
+	}
+
+	return monitor, nil
 }

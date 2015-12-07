@@ -82,6 +82,13 @@ func resourceDatadogMetricAlert() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
+
+			// TODO: too evil? Add to other resources too. Should we "hide" in meta?
+			"recreate": &schema.Schema{
+				Type:     schema.TypeBool,
+				Default:  false,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -161,6 +168,8 @@ func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mon
 func resourceDatadogMetricAlertCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
+	// TODO: refactor out into generic create function that only takes the specific
+	// struct. After wire duplexer.
 	w, err := client.CreateMonitor(buildMetricAlertStruct(d, "warning"))
 
 	if err != nil {
@@ -184,6 +193,9 @@ func resourceDatadogMetricAlertCreate(d *schema.ResourceData, meta interface{}) 
 func resourceDatadogMetricAlertDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
 
+	// TODO: refactor, wire duplexer in.
+	// struct.
+
 	for _, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
 			return fmt.Errorf("Id not set.")
@@ -205,9 +217,12 @@ func resourceDatadogMetricAlertDelete(d *schema.ResourceData, meta interface{}) 
 // resourceDatadogMetricAlertUpdate updates a monitor.
 func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] running update.")
+	// TODO: refactor to call the "duplexer" instead of all this split bullshit
 
 	split := strings.Split(d.Id(), "__")
 
+	var newWarningID int
+	var newCriticalID int
 	wID, cID := split[0], split[1]
 
 	if wID == "" {
@@ -238,17 +253,52 @@ func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) 
 	warningBody.Id = warningID
 	criticalBody.Id = criticalID
 
+	// TODO: in the new scenario we know one of the monitors will exist, but another might
+	// not. Either test again, or just run the update and catch the error (should be a 404)
 	wErr := client.UpdateMonitor(warningBody)
 
 	if wErr != nil {
-		return fmt.Errorf("error updating warning: %s", wErr.Error())
+		if strings.EqualFold(wErr.Error(), "API error 404 Not Found: {\"errors\":[\"Monitor not found\"]}") {
+			log.Printf("[DEBUG] XX monitor does not exist, recreating")
+			m, err := client.CreateMonitor(warningBody)
+			if err != nil {
+				return fmt.Errorf("error creating warning: %s", err.Error())
+			}
+			newWarningID = m.Id
+		} else {
+			return fmt.Errorf("error updating warning: %s", wErr.Error())
+		}
 	}
 
 	cErr := client.UpdateMonitor(criticalBody)
 
 	if cErr != nil {
-		return fmt.Errorf("error updating critical: %s", cErr.Error())
+		if strings.EqualFold(cErr.Error(), "API error 404 Not Found: {\"errors\":[\"Monitor not found\"]}") {
+			log.Printf("[DEBUG] XX monitor does not exist, recreating")
+			m, err := client.CreateMonitor(criticalBody)
+			if err != nil {
+				return fmt.Errorf("error creating warning: %s", err.Error())
+			}
+			newCriticalID = m.Id
+		} else {
+			return fmt.Errorf("error updating critical: %s", cErr.Error())
+		}
 	}
+
+	// TODO unfuck
+	if newWarningID != 0 {
+		log.Printf("[DEBUG] XX Warning ID: %d", newWarningID)
+		d.SetId(fmt.Sprintf("%d__%s", newWarningID, cID))
+	}
+
+	if newCriticalID != 0 {
+		log.Printf("[DEBUG] XX Critical IDs: %d", newCriticalID)
+		d.SetId(fmt.Sprintf("%s__%d", wID, newCriticalID))
+	}
+
+	// After an update we can "unset" recreate TODO: polish
+	log.Printf("[DEBUG] XX Unsetting recreate")
+	d.Set("recreate", false)
 
 	return nil
 }
