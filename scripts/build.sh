@@ -20,17 +20,25 @@ TERRAFORM=$(which terraform)
 [ $TERRAFORM ] && TERRAFORM_LOC=$(dirname ${TERRAFORM})
 
 if [ $TERRAFORM_LOC  ] ; then
-    DEST_PATH=$TERRAFORM_LOC
+    BASE_PATH=$TERRAFORM_LOC
 else
-    DEST_PATH=$GOPATH/bin
+    BASE_PATH=$GOPATH/bin
 fi
 
 echo ""
-echo "Moving terraform-provider-datadog_${XC_OS}_${XC_ARCH} to $DEST_PATH/$DEST_BIN"
+echo "Moving terraform-provider-datadog_${XC_OS}_${XC_ARCH} to $BASE_PATH/$DEST_BIN"
 echo ""
 
-mv terraform-provider-datadog_${XC_OS}_${XC_ARCH} $DEST_PATH/$DEST_BIN
+mv terraform-provider-datadog_${XC_OS}_${XC_ARCH} $BASE_PATH/$DEST_BIN
 
 echo "Resulting binary: "
 echo ""
-echo $(ls -la $DEST_PATH/$DEST_BIN)
+echo $(ls -la $BASE_PATH/$DEST_BIN)
+
+# Conditional for Brew people on OSX
+if [[ -L $TERRAFORM ]] && [[ $(uname) == "Darwin" ]]; then
+  # If terraform is a symlink(probably installed by brew) then we want to link the binary there so its available to go at runtime.
+  # Because readlink on OSX cannot fetch the absolute path, we used python.
+  SYM_PATH=$(python -c "from __future__ import print_function ; import os ; print(os.path.realpath(\"${TERRAFORM}\"))")
+  ln -sf $BASE_PATH/$DEST_BIN $(dirname $SYM_PATH)/$DEST_BIN
+fi
