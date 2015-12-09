@@ -12,7 +12,6 @@ script:
   - test `gofmt -l . | wc -l` = 0
 before_install:
   - go get github.com/mitchellh/gox
-  - gox
   - go get github.com/tcnksm/ghr
 after_success:
   - make ci
