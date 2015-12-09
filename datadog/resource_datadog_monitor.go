@@ -204,16 +204,13 @@ func resourceDatadogMonitorExists(d *schema.ResourceData, meta interface{}) (b b
 			log.Printf("[DEBUG] Received error converting string: %s", iErr)
 			return false, iErr
 		}
-		_, err := client.GetMonitor(ID)
-		if err != nil {
+		if _, err := client.GetMonitor(ID); err != nil {
 			if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
 				log.Printf("[DEBUG] monitor does not exist: %s", err)
 				exists = false
 				continue
-			} else {
-				e = err
-				continue
 			}
+			return false, err
 		}
 		exists = true
 	}
