@@ -18,14 +18,12 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 		if v == "" {
 			return fmt.Errorf("Id not set.")
 		}
-		ID, iErr := strconv.Atoi(v)
-
-		if iErr != nil {
-			return iErr
+		ID, err := strconv.Atoi(v)
+		if err != nil {
+			return err
 		}
 
 		m, err := client.GetMonitor(ID)
-
 		if err != nil {
 			if strings.EqualFold(err.Error(), "API error 404 Not Found: {\"errors\":[\"Monitor not found\"]}") {
 				log.Printf("[DEBUG] XX marking monitor %s a not existing: %s", v, err)
@@ -137,23 +135,19 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 			log.Printf("[DEBUG] Could not parse IDs: %s", v)
 			return false, fmt.Errorf("Id not set.")
 		}
-		ID, iErr := strconv.Atoi(v)
-
-		if iErr != nil {
-			log.Printf("[DEBUG] Received error converting string: %s", iErr)
-			return false, iErr
-		}
-		_, err := client.GetMonitor(ID)
+		ID, err := strconv.Atoi(v)
 		if err != nil {
+			log.Printf("[DEBUG] Received error converting string: %s", err)
+			return false, err
+		}
 
+		if _, err = client.GetMonitor(ID); err != nil {
 			if strings.EqualFold(err.Error(), "API error 404 Not Found: {\"errors\":[\"Monitor not found\"]}") {
 				log.Printf("[DEBUG] monitor %s does not exist: %s", v, err)
 				continue
-			} else {
-				log.Printf("[DEBUG] received error getting monitor %s: %s", v, err)
-				e = err
-				continue
 			}
+			log.Printf("[DEBUG] received error getting monitor %s: %s", v, err)
+			return false, err
 		}
 		log.Printf("[DEBUG] found monitor %s", v)
 		exists = true

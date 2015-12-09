@@ -44,16 +44,13 @@ func resourceDatadogDashboardCreate(d *schema.ResourceData, meta interface{}) er
 	opts.TemplateVariables = []datadog.TemplateVariable{}
 
 	dashboard, err := client.CreateDashboard(&opts)
-
 	if err != nil {
 		return fmt.Errorf("Error creating Dashboard: %s", err)
 	}
 
 	d.SetId(strconv.Itoa(dashboard.Id))
 
-	err = resourceDatadogDashboardUpdate(d, meta)
-
-	if err != nil {
+	if err = resourceDatadogDashboardUpdate(d, meta); err != nil {
 		return fmt.Errorf("Error updating Dashboard: %s", err)
 	}
 
@@ -68,9 +65,7 @@ func resourceDatadogDashboardDelete(d *schema.ResourceData, meta interface{}) er
 
 	id, _ := strconv.Atoi(d.Id())
 
-	err := client.DeleteDashboard(id)
-
-	if err != nil {
+	if err := client.DeleteDashboard(id); err != nil {
 		return fmt.Errorf("Error deleting Dashboard: %s", err)
 	}
 
@@ -83,13 +78,10 @@ func resourceDatadogDashboardExists(d *schema.ResourceData, meta interface{}) (b
 
 	id, _ := strconv.Atoi(d.Id())
 
-	_, err := client.GetDashboard(id)
-
-	if err != nil {
+	if _, err := client.GetDashboard(id); err != nil {
 		if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
 			return false, nil
 		}
-
 		return false, fmt.Errorf("Error retrieving dashboard: %s", err)
 	}
 
@@ -103,7 +95,6 @@ func resourceDatadogDashboardRead(d *schema.ResourceData, meta interface{}) erro
 	id, _ := strconv.Atoi(d.Id())
 
 	resp, err := client.GetDashboard(id)
-
 	if err != nil {
 		return fmt.Errorf("Error retrieving dashboard: %s", err)
 	}
@@ -116,7 +107,6 @@ func resourceDatadogDashboardRead(d *schema.ResourceData, meta interface{}) erro
 	t := &schema.Set{F: templateVariablesHash}
 
 	for _, v := range resp.TemplateVariables {
-
 		m := make(map[string]interface{})
 
 		if v.Name != "" {
@@ -174,12 +164,9 @@ func resourceDatadogDashboardUpdate(d *schema.ResourceData, meta interface{}) er
 
 	opts.TemplateVariables = v
 
-	err := client.UpdateDashboard(&opts)
-
-	if err != nil {
+	if err := client.UpdateDashboard(&opts); err != nil {
 		return fmt.Errorf("Error updating Dashboard: %s", err)
 	}
 
 	return nil
-
 }

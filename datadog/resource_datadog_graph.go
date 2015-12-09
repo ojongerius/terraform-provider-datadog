@@ -84,9 +84,7 @@ func resourceDatadogGraphCreate(d *schema.ResourceData, meta interface{}) error 
 
 	resourceDatadogGraphUpdate(d, meta)
 
-	err := resourceDatadogGraphRetrieve(d, meta)
-
-	if err != nil {
+	if err := resourceDatadogGraphRetrieve(d, meta); err != nil {
 		return err
 	}
 
@@ -98,20 +96,15 @@ func resourceDatadogGraphExists(d *schema.ResourceData, meta interface{}) (bool,
 	client := meta.(*datadog.Client)
 
 	// Verify our Dashboard(s) exist
-	_, err := client.GetDashboard(d.Get("dashboard_id").(int))
-
-	if err != nil {
+	if _, err := client.GetDashboard(d.Get("dashboard_id").(int)); err != nil {
 		if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
 			return false, nil
 		}
-
 		return false, fmt.Errorf("Error retrieving dashboard: %s", err)
 	}
 
 	// Verify we exist
-	err = resourceDatadogGraphRead(d, meta)
-
-	if err != nil {
+	if err := resourceDatadogGraphRead(d, meta); err != nil {
 		return false, err
 	}
 
@@ -120,9 +113,7 @@ func resourceDatadogGraphExists(d *schema.ResourceData, meta interface{}) (bool,
 
 // resourceDatadogGraphRead synchronises Datadog and local state. It uses resourceDatadogGraphRetreive for this.
 func resourceDatadogGraphRead(d *schema.ResourceData, meta interface{}) error {
-	err := resourceDatadogGraphRetrieve(d, meta)
-
-	if err != nil {
+	if err := resourceDatadogGraphRetrieve(d, meta); err != nil {
 		return err
 	}
 
@@ -135,7 +126,6 @@ func resourceDatadogGraphRetrieve(d *schema.ResourceData, meta interface{}) erro
 
 	// Get the dashboard(s)
 	dashBoard, err := client.GetDashboard(d.Get("dashboard_id").(int))
-
 	if err != nil {
 		return fmt.Errorf("Error retrieving associated dashboard: %s", err)
 	}
@@ -184,13 +174,12 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 
 	// Get the dashboard
 	dashboard, err := client.GetDashboard(d.Get("dashboard_id").(int))
-
-	// Make sure the mandatory placeholder is not in there
-	dashboard = buildGraph("Mandatory placeholder graph", dashboard)
-
 	if err != nil {
 		return err
 	}
+
+	// Make sure the mandatory placeholder is not in there
+	dashboard = buildGraph("Mandatory placeholder graph", dashboard)
 
 	// Check if there are changes
 	if d.HasChange("request") {
@@ -233,9 +222,7 @@ func resourceDatadogGraphUpdate(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	// Update/commit
-	err = client.UpdateDashboard(dashboard)
-
-	if err != nil {
+	if err = client.UpdateDashboard(dashboard); err != nil {
 		return err
 	}
 
@@ -248,7 +235,6 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 
 	// Get the dashboard
 	dashboard, err := client.GetDashboard(d.Get("dashboard_id").(int))
-
 	if err != nil {
 		return fmt.Errorf("Error retrieving associated dashboard: %s", err)
 	}
@@ -262,15 +248,11 @@ func resourceDatadogGraphDelete(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	// Update/commit
-	err = client.UpdateDashboard(dashboard)
-
-	if err != nil {
+	if err = client.UpdateDashboard(dashboard); err != nil {
 		return err
 	}
 
-	err = resourceDatadogGraphRetrieve(d, meta)
-
-	if err != nil {
+	if err = resourceDatadogGraphRetrieve(d, meta); err != nil {
 		return err
 	}
 
@@ -301,9 +283,8 @@ func buildGraph(title string, dashboard *datadog.Dashboard) *datadog.Dashboard {
 	for _, r := range dashboard.Graphs {
 		if r.Title == title {
 			continue
-		} else {
-			g = append(g, r)
 		}
+		g = append(g, r)
 	}
 
 	dashboard.Graphs = g

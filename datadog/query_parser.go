@@ -59,7 +59,8 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) (sub
 	monitor := subDatadogMonitor{}
 	// Name
 	re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)
-	r := re.FindStringSubmatch(m.Name) // Find check name
+	// Find check name
+	r := re.FindStringSubmatch(m.Name)
 	if r == nil {
 		return monitor, fmt.Errorf("Name parser error: string match returned nil")
 	}

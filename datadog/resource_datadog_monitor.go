@@ -145,13 +145,11 @@ func resourceDatadogMonitorCreate(d *schema.ResourceData, meta interface{}) erro
 	client := meta.(*datadog.Client)
 
 	w, err := client.CreateMonitor(buildMonitorStruct(d, "warning"))
-
 	if err != nil {
 		return fmt.Errorf("error creating warning: %s", err)
 	}
 
 	c, cErr := client.CreateMonitor(buildMonitorStruct(d, "critical"))
-
 	if cErr != nil {
 		return fmt.Errorf("error creating warning: %s", cErr)
 	}

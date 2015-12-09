@@ -168,13 +168,11 @@ func resourceDatadogOutlierAlertCreate(d *schema.ResourceData, meta interface{})
 	client := meta.(*datadog.Client)
 
 	w, err := client.CreateMonitor(buildOutlierAlertStruct(d, "warning"))
-
 	if err != nil {
 		return fmt.Errorf("error creating warning: %s", err)
 	}
 
 	c, cErr := client.CreateMonitor(buildOutlierAlertStruct(d, "critical"))
-
 	if cErr != nil {
 		return fmt.Errorf("error creating warning: %s", cErr)
 	}
@@ -194,14 +192,12 @@ func resourceDatadogOutlierAlertDelete(d *schema.ResourceData, meta interface{})
 		if v == "" {
 			return fmt.Errorf("Id not set.")
 		}
-		ID, iErr := strconv.Atoi(v)
-
-		if iErr != nil {
-			return iErr
+		ID, err := strconv.Atoi(v)
+		if err != nil {
+			return err
 		}
 
-		err := client.DeleteMonitor(ID)
-		if err != nil {
+		if err = client.DeleteMonitor(ID); err != nil {
 			return err
 		}
 	}
@@ -215,7 +211,6 @@ func resourceDatadogOutlierAlertUpdate(d *schema.ResourceData, meta interface{})
 	split := strings.Split(d.Id(), "__")
 
 	wID, cID := split[0], split[1]
-
 	if wID == "" {
 		return fmt.Errorf("Id not set.")
 	}
@@ -224,16 +219,14 @@ func resourceDatadogOutlierAlertUpdate(d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("Id not set.")
 	}
 
-	warningID, iErr := strconv.Atoi(wID)
-
-	if iErr != nil {
-		return iErr
+	warningID, err := strconv.Atoi(wID)
+	if err != nil {
+		return err
 	}
 
-	criticalID, iErr := strconv.Atoi(cID)
-
-	if iErr != nil {
-		return iErr
+	criticalID, err := strconv.Atoi(cID)
+	if err != nil {
+		return err
 	}
 
 	client := meta.(*datadog.Client)
@@ -244,16 +237,12 @@ func resourceDatadogOutlierAlertUpdate(d *schema.ResourceData, meta interface{})
 	warningBody.Id = warningID
 	criticalBody.Id = criticalID
 
-	wErr := client.UpdateMonitor(warningBody)
-
-	if wErr != nil {
-		return fmt.Errorf("error updating warning: %s", wErr.Error())
+	if err := client.UpdateMonitor(warningBody); err != nil {
+		return fmt.Errorf("error updating warning: %s", err.Error())
 	}
 
-	cErr := client.UpdateMonitor(criticalBody)
-
-	if cErr != nil {
-		return fmt.Errorf("error updating critical: %s", cErr.Error())
+	if err = client.UpdateMonitor(criticalBody); err != nil {
+		return fmt.Errorf("error updating critical: %s", err.Error())
 	}
 
 	return nil

@@ -63,25 +63,22 @@ func testAccCheckDatadogOutlierAlertDestroy(s *terraform.State) error {
 				fmt.Printf("Could not parse IDs. %s", v)
 				return fmt.Errorf("Id not set.")
 			}
-			ID, iErr := strconv.Atoi(v)
+			ID, err := strconv.Atoi(v)
 
-			if iErr != nil {
-				fmt.Printf("Received error converting string %s", iErr)
-				return iErr
-			}
-			_, err := client.GetMonitor(ID)
 			if err != nil {
+				fmt.Printf("Received error converting string %s", err)
+				return err
+			}
+			if _, err := client.GetMonitor(ID); err != nil {
 				// 404 is what we want, anything else is an error. Sadly our API will return a string like so:
 				// return errors.New("API error: " + resp.Status)
 				// For now we'll use unfold :|
 				if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
 					continue
-				} else {
-					fmt.Errorf("Received an error retrieving monitor %s", err)
 				}
-			} else {
-				fmt.Errorf("Monitor still exists. %s", err)
+				return fmt.Errorf("Received an error retrieving monitor %s", err)
 			}
+			return fmt.Errorf("Monitor still exists. %s", err)
 		}
 	}
 	return nil
@@ -96,13 +93,11 @@ func testAccCheckDatadogOutlierAlertExists(n string) resource.TestCheckFunc {
 					fmt.Printf("Could not parse IDs. %s", v)
 					return fmt.Errorf("Id not set.")
 				}
-				ID, iErr := strconv.Atoi(v)
-
-				if iErr != nil {
-					return fmt.Errorf("Received error converting string %s", iErr)
-				}
-				_, err := client.GetMonitor(ID)
+				ID, err := strconv.Atoi(v)
 				if err != nil {
+					return fmt.Errorf("Received error converting string %s", err)
+				}
+				if _, err = client.GetMonitor(ID); err != nil {
 					return fmt.Errorf("Received an error retrieving monitor %s", err)
 				}
 			}

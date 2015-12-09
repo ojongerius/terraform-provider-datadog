@@ -43,15 +43,12 @@ func testAccCheckDatadogGraphDestroy(s *terraform.State) error {
 		}
 
 		d, err := getGraphDashboard(s, rs)
-
 		if err != nil {
 			return err
 		}
 
 		// See if the graph with our title is still in the dashboard
-		_, err = getGraphFromDashboard(d, rs.Primary.Attributes["title"])
-
-		if err != nil {
+		if _, err = getGraphFromDashboard(d, rs.Primary.Attributes["title"]); err != nil {
 			return err
 		}
 
@@ -66,7 +63,6 @@ func getGraphDashboard(s *terraform.State, rs *terraform.ResourceState) (string,
 	var id string
 
 	for _, d := range rs.Dependencies {
-
 		rs, ok := s.RootModule().Resources[d]
 
 		if !ok {
@@ -81,7 +77,6 @@ func getGraphDashboard(s *terraform.State, rs *terraform.ResourceState) (string,
 	}
 
 	return id, fmt.Errorf("Failed to find dashboard in state.")
-
 }
 
 func getGraphFromDashboard(id, title string) (datadog.Graph, error) {
@@ -95,7 +90,6 @@ func getGraphFromDashboard(id, title string) (datadog.Graph, error) {
 	}
 
 	d, err := client.GetDashboard(i)
-
 	if err != nil {
 		return graph, fmt.Errorf("Error retrieving associated dashboard: %s", err)
 	}
@@ -104,7 +98,6 @@ func getGraphFromDashboard(id, title string) (datadog.Graph, error) {
 		if g.Title != title {
 			continue
 		}
-
 		return g, nil
 	}
 
@@ -123,15 +116,12 @@ func testAccCheckDatadogGraphExists(n string) resource.TestCheckFunc {
 		}
 
 		i, err := getGraphDashboard(s, rs)
-
 		if err != nil {
 			return err
 		}
 
 		// See if our graph is in the dashboard
-		_, err = getGraphFromDashboard(i, rs.Primary.Attributes["title"])
-
-		if err != nil {
+		if _, err = getGraphFromDashboard(i, rs.Primary.Attributes["title"]); err != nil {
 			return err
 		}
 

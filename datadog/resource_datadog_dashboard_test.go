@@ -83,7 +83,6 @@ func testAccCheckDatadogDashboardDestroy(s *terraform.State) error {
 func testAccCheckDatadogDashboardExists(n string, DashboardResp *datadog.Dashboard) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
-
 		if !ok {
 			return fmt.Errorf("Not found: %s", n)
 		}
@@ -94,14 +93,12 @@ func testAccCheckDatadogDashboardExists(n string, DashboardResp *datadog.Dashboa
 
 		client := testAccProvider.Meta().(*datadog.Client)
 
-		intID, intErr := strconv.Atoi(rs.Primary.ID)
-
-		if intErr != nil {
-			return intErr
+		intID, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
 		}
 
 		resp, err := client.GetDashboard(intID)
-
 		if err != nil {
 			return err
 		}

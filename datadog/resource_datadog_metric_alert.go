@@ -196,13 +196,11 @@ func resourceDatadogMetricAlertDelete(d *schema.ResourceData, meta interface{}) 
 			return fmt.Errorf("Id not set.")
 		}
 		ID, err := strconv.Atoi(v)
-
 		if err != nil {
 			return err
 		}
 
-		err = client.DeleteMonitor(ID)
-		if err != nil {
+		if err = client.DeleteMonitor(ID); err != nil {
 			return err
 		}
 	}
@@ -228,7 +226,6 @@ func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) 
 
 		var err error
 		monitorBody.Id, err = strconv.Atoi(v)
-
 		if err != nil {
 			return err
 		}
@@ -237,8 +234,7 @@ func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) 
 		ids[i] = monitorBody.Id
 		// Update monitor, 404 implies our monitor may have been manually deleted, and
 		// attempt to create it.
-		err = client.UpdateMonitor(monitorBody)
-		if err != nil {
+		if err = client.UpdateMonitor(monitorBody); err != nil {
 			if strings.EqualFold(err.Error(), "API error 404 Not Found: {\"errors\":[\"Monitor not found\"]}") {
 				// TODO: remove XX when done log.
 				log.Printf("[DEBUG] XX monitor does not exist, recreating")

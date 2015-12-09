@@ -145,7 +145,6 @@ func resourceDatadogServiceCheckCreate(d *schema.ResourceData, meta interface{})
 
 	log.Print("[DEBUG] Creating service check")
 	m, err := client.CreateMonitor(buildServiceCheckStruct(d))
-
 	if err != nil {
 		return fmt.Errorf("error creating service check: %s", err)
 	}
@@ -165,8 +164,7 @@ func resourceDatadogServiceCheckDelete(d *schema.ResourceData, meta interface{})
 		return err
 	}
 
-	err = client.DeleteMonitor(ID)
-	if err != nil {
+	if err = client.DeleteMonitor(ID); err != nil {
 		return err
 	}
 	return nil
@@ -198,9 +196,7 @@ func resourceDatadogServiceCheckUpdate(d *schema.ResourceData, meta interface{})
 	}
 
 	body.Id = ID
-	err = client.UpdateMonitor(body)
-
-	if err != nil {
+	if err = client.UpdateMonitor(body); err != nil {
 		return fmt.Errorf("error updating warning: %s", err.Error())
 	}
 	return nil
