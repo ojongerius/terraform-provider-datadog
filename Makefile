@@ -17,6 +17,7 @@ updatedeps:
         | grep -v '/internal/' \
         | sort -u \
         | xargs go get -f -u -v
+	go get github.com/hashicorp/logutils
 
 # test runs the unit tests and vets the code
 test: generate
