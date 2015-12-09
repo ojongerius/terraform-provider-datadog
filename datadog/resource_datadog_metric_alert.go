@@ -248,9 +248,8 @@ func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) 
 				}
 				// This is our new ID
 				ids[i] = m.Id
-			} else {
-				return fmt.Errorf("error updating warning: %s", err.Error())
-			}
+			} 
+		    return fmt.Errorf("error updating warning: %s", err.Error())
 		}
 	}
 
