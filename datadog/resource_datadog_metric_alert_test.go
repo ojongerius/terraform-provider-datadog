@@ -47,6 +47,8 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 						"datadog_metric_alert.foo", "operator", "<"),
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "notify_no_data", "false"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "renotify_interval", "60"),
 					// TODO: add warning and critical
 				),
 			},
@@ -136,6 +138,7 @@ resource "datadog_metric_alert" "foo" {
   }
 
   notify_no_data = false
+  renotify_interval = 60
 
 }
 `
