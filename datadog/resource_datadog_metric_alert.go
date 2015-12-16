@@ -64,11 +64,55 @@ func resourceDatadogMetricAlert() *schema.Resource {
 			// Alert Settings
 			"warning": &schema.Schema{
 				Type:     schema.TypeMap,
-				Required: true,
+				Optional: true, // TODO does this make sense?
+				/*
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"id": &schema.Schema{
+								Type:     schema.TypeInt,
+								Optional: true,
+								Default: 0,
+							},
+							"foo": &schema.Schema{
+								Type:     schema.TypeString,
+								Optional: true,
+								Default: "foo",
+							},
+							"threshold": &schema.Schema{
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"notify": &schema.Schema{
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				*/
 			},
+			// Alert Settings
 			"critical": &schema.Schema{
 				Type:     schema.TypeMap,
-				Required: true,
+				Optional: true, // TODO does this make sense?
+				/*
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"id": &schema.Schema{
+								Type:     schema.TypeInt,
+								Optional: true,
+								Default: 0,
+							},
+							"threshold": &schema.Schema{
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"notify": &schema.Schema{
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				*/
 			},
 
 			// Additional Settings
@@ -174,9 +218,23 @@ func resourceDatadogMetricAlertCreate(d *schema.ResourceData, meta interface{}) 
 
 	for i, l := range levels {
 		m, err := client.CreateMonitor(buildMetricAlertStruct(d, l))
-		ids[i] = m.Id
 		if err != nil {
 			return fmt.Errorf("error creating %s: %s", l, err)
+		}
+		ids[i] = m.Id
+		log.Printf("XX Setting %s to %d", fmt.Sprintf("%s.id", l), m.Id)
+		// TODO I think we need to create a map, and set that instead?
+		levelMap := make(map[string]string)
+		// TODO improve this
+		if v, ok := d.GetOk(fmt.Sprintf("%s.treshold", levels[i])); ok {
+			levelMap["threshold"] = v.(string)
+		}
+		if v, ok := d.GetOk(fmt.Sprintf("%s.notify", levels[i])); ok {
+			levelMap["notify"] = v.(string)
+		}
+		levelMap["id"] = fmt.Sprintf("%d", m.Id)
+		if err := d.Set(fmt.Sprintf(l), levelMap); err != nil {
+			return err
 		}
 	}
 
@@ -190,8 +248,9 @@ func resourceDatadogMetricAlertDelete(d *schema.ResourceData, meta interface{}) 
 	client := meta.(*datadog.Client)
 
 	// TODO: refactor, wire duplexer in
+	levels := []string{"warning", "critical"}
 
-	for _, v := range strings.Split(d.Id(), "__") {
+	for i, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
 			return fmt.Errorf("Id not set.")
 		}
@@ -203,6 +262,7 @@ func resourceDatadogMetricAlertDelete(d *schema.ResourceData, meta interface{}) 
 		if err = client.DeleteMonitor(ID); err != nil {
 			return err
 		}
+		d.Set(fmt.Sprintf("%s.id", levels[i]), 0)
 	}
 	return nil
 }
@@ -244,15 +304,21 @@ func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) 
 				}
 				// This is our new ID
 				ids[i] = m.Id
+				// TODO: Save it here, WIP
+				d.Set(fmt.Sprintf("%s.id", levels[i]), m.Id)
 			}
 			return fmt.Errorf("error updating warning: %s", err.Error())
 		}
 	}
 
+	// TODO: dedupe
+	if err := d.Set(fmt.Sprintf("%s.id", levels[0]), ids[0]); err != nil {
+		return err
+	}
+	if err := d.Set(fmt.Sprintf("%s.id", levels[1]), ids[1]); err != nil {
+		return err
+	}
 	d.SetId(fmt.Sprintf("%d__%d", ids[0], ids[1]))
-
-	// After an update we can "unset" recreate. log.Printf("[DEBUG] XX Unsetting recreate")FJJJJ
-	d.Set("recreate", false)
 
 	return nil
 }

@@ -14,6 +14,9 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 	client := meta.(*datadog.Client)
 	monitors := make([]subDatadogMonitor, 2)
 
+	// TODO clean up
+	levels := []string{"warning", "critical"}
+
 	for i, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
 			return fmt.Errorf("Id not set.")
@@ -30,11 +33,22 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 				// TODO: vanishing should trigger recreation. How do we get this done with? We can't fail,
 				// if we set it to be an empty monitor object, that would not trigger anything.
 				// Ideas to explore:
-				// * Save the IDs in say int warning.ID (and set it to something non default (0) and not possible
-				// * Save to bool warning.exists (but maybe inverse warning.vanished because default is false)
-				// * Save it to a string so we don't have the fucking default value issue
+				// * 1 Save the IDs in say int warning.ID (and set it to something non default (0) and not possible
+				//    ^^ this is kind of nice, as if it vanished we set it to "", but how would that work
+				//            diff wise? Shall we just keep it in the contrived ID?
+				// * 2 Save to bool warning.exists (but maybe inverse warning.vanished because default is false)
+				//    ^^ this is better as option 3, and the default value could be true.
+				// * 3 Save it to a string so we don't have the fucking default value issue
 				//monitors[i].Recreate = true
-				d.Set("recreate", true)
+				//    ^^ sure this worked, but we now have a kind of useless thing.
+				//d.Set(fmt.Sprintf("%s.exists", levels[i]), true)
+				// Set the ID here
+				// TODO improve this
+				levelMap := make(map[string]string)
+				levelMap["id"] = ""
+				if err := d.Set(fmt.Sprintf(levels[i]), levelMap); err != nil {
+					return err
+				}
 				continue
 			}
 			return err
@@ -44,7 +58,6 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 		if err != nil {
 			return err
 		}
-
 	}
 
 	log.Printf("[DEBUG] XX amount of monitors: %v", len(monitors))
@@ -128,9 +141,12 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 
 	client := meta.(*datadog.Client)
 
+	// TODO stop abusing this
+	levels := []string{"warning", "critical"}
+
 	// Set default to false
 	exists := false
-	for _, v := range strings.Split(d.Id(), "__") {
+	for i, v := range strings.Split(d.Id(), "__") {
 		if v == "" {
 			log.Printf("[DEBUG] Could not parse IDs: %s", v)
 			return false, fmt.Errorf("Id not set.")
@@ -144,6 +160,11 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 		if _, err = client.GetMonitor(ID); err != nil {
 			if strings.EqualFold(err.Error(), "API error 404 Not Found: {\"errors\":[\"Monitor not found\"]}") {
 				log.Printf("[DEBUG] monitor %s does not exist: %s", v, err)
+				levelMap := make(map[string]string)
+				levelMap["id"] = ""
+				if err := d.Set(fmt.Sprintf(levels[i]), levelMap); err != nil {
+					return false, err
+				}
 				continue
 			}
 			log.Printf("[DEBUG] received error getting monitor %s: %s", v, err)
