@@ -84,6 +84,12 @@ func resourceDatadogOutlierAlert() *schema.Resource {
 				Optional: true,
 				Default:  "dbscan",
 			},
+
+			"renotify_interval": &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
 		},
 	}
 }
@@ -148,8 +154,9 @@ func buildOutlierAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mo
 	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", query))
 
 	o := datadog.Options{
-		NotifyNoData:    d.Get("notify_no_data").(bool),
-		NoDataTimeframe: d.Get("no_data_timeframe").(int),
+		NotifyNoData:     d.Get("notify_no_data").(bool),
+		NoDataTimeframe:  d.Get("no_data_timeframe").(int),
+		RenotifyInterval: d.Get("renotify_interval").(int),
 	}
 
 	m := datadog.Monitor{

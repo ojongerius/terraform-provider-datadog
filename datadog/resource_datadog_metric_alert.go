@@ -83,11 +83,10 @@ func resourceDatadogMetricAlert() *schema.Resource {
 				Optional: true,
 			},
 
-			// TODO: too evil? Add to other resources too. Should we "hide" in meta?
-			"recreate": &schema.Schema{
-				Type:     schema.TypeBool,
-				Default:  false,
+			"renotify_interval": &schema.Schema{
+				Type:     schema.TypeInt,
 				Optional: true,
+				Default:  0,
 			},
 		},
 	}
@@ -149,8 +148,9 @@ func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mon
 	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", query))
 
 	o := datadog.Options{
-		NotifyNoData:    d.Get("notify_no_data").(bool),
-		NoDataTimeframe: d.Get("no_data_timeframe").(int),
+		NotifyNoData:     d.Get("notify_no_data").(bool),
+		NoDataTimeframe:  d.Get("no_data_timeframe").(int),
+		RenotifyInterval: d.Get("renotify_interval").(int),
 	}
 
 	m := datadog.Monitor{
