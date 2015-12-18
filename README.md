@@ -28,7 +28,6 @@ https://github.com/ojongerius/terraform-provider-datadog/issues).
 Download builds for Darwin, Linux and Windows from the [releases page](https://github.com/ojongerius/terraform-provider-datadog/releases/).
 
 ## Resources
-
 ### Service Checks
 
 Example configuration:
