@@ -1,6 +1,7 @@
 [![Build
 status](https://travis-ci.org/ojongerius/terraform-provider-datadog.svg)](https://travis-ci.org/ojongerius/terraform-provider-datadog)
 
+
 # terraform-provider-datadog
 
 A [Terraform](https://github.com/hashicorp/terraform) plugin that provides resources for [Datadog](https://www.datadoghq.com/).
