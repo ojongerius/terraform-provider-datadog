@@ -88,15 +88,18 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) (sub
 		monitor.Message = res[0]
 	}
 
+	levelMap := d.Get(level).(map[string]interface{})
+
 	for k, v := range res {
 		if k == 0 {
 			// The message is the first element, move on to the contact
 			// TODO: handle cases where at-mentions are embedded/nested *in* the messages.
 			continue
 		}
-		log.Printf("[DEBUG] found %s.notify: %s", level, v)
-		if fmt.Sprintf("@%s", v) != d.Get(fmt.Sprintf("%s.notify", level)) {
-			log.Printf("[DEBUG] XX %s.notify was: %s found: %s", level, d.Get(fmt.Sprintf("%s.notify", level)), v)
+		log.Printf("[DEBUG] found %s.notify: %s", level, levelMap["notify"])
+		// TODO: this will
+		if fmt.Sprintf("@%s", v) != levelMap["notify"] {
+			log.Printf("[DEBUG] XX %s.notify was: %s found: %s", level, levelMap["notify"], level, v)
 			monitor.Notify = v
 		}
 	}
@@ -207,6 +210,8 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) (sub
 							monitor.Operator = n
 						}
 					}
+				// TODO: this is different for resources that have
+				//       warn/crit monitors (metric alerts) and others
 				case n1[i] == "threshold": // Shared
 					if v, ok := d.GetOk("treshold"); ok {
 						if n != v {

@@ -44,9 +44,9 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 				//d.Set(fmt.Sprintf("%s.exists", levels[i]), true)
 				// Set the ID here
 				// TODO improve this
-				levelMap := make(map[string]string)
+				levelMap := d.Get(levels[i]).(map[string]interface{})
 				levelMap["id"] = ""
-				if err := d.Set(fmt.Sprintf(levels[i]), levelMap); err != nil {
+				if err := d.Set(levels[i], levelMap); err != nil {
 					return err
 				}
 				continue
@@ -63,16 +63,13 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 	log.Printf("[DEBUG] XX amount of monitors: %v", len(monitors))
 
 	// TODO: Better, less tedious way to do this?
-	for _, m := range monitors {
+	for i, m := range monitors {
 		log.Printf("[DEBUG] XX monitor: %v", m)
 		if m.Name != "" {
 			d.Set("name", m.Name)
 		}
 		if m.Message != "" {
 			d.Set("message", m.Message)
-		}
-		if m.Notify != "" {
-			d.Set("notify", m.Notify)
 		}
 		if m.TimeAggregate != "" {
 			d.Set("time_aggr", m.TimeAggregate)
@@ -89,10 +86,6 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 
 		if m.Operator != "" {
 			d.Set("operator", m.Operator)
-		}
-
-		if m.Threshold != "" {
-			d.Set("threshold", m.Threshold)
 		}
 
 		if m.Algorithm != "" {
@@ -127,6 +120,26 @@ func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error 
 			log.Printf("[DEBUG] XX keys were found, setting state for diff")
 			d.Set("keys", m.Keys)
 		}
+
+		levelMap := d.Get(levels[i]).(map[string]interface{})
+		if m.Threshold != "" {
+			levelMap["threshold"] = m.Threshold
+			log.Printf("XX threshold %s", m.Threshold)
+		} else {
+			log.Printf("XX threshold not found")
+			log.Printf("Object: %v", d.Get(fmt.Sprintf(levels[i])))
+		}
+		if m.Notify != "" {
+			log.Printf("XX notify %s", m.Notify)
+			levelMap["notify"] = m.Notify
+		} else {
+			log.Printf("XX notify not found")
+		}
+		err := d.Set(levels[i], levelMap)
+		if err != nil {
+			log.Printf("XX error writing values! %s", err)
+		}
+		log.Printf("REsulting Object: %v", d.Get(fmt.Sprintf(levels[i])))
 	}
 
 	return nil

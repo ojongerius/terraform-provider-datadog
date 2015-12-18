@@ -224,16 +224,11 @@ func resourceDatadogMetricAlertCreate(d *schema.ResourceData, meta interface{}) 
 		ids[i] = m.Id
 		log.Printf("XX Setting %s to %d", fmt.Sprintf("%s.id", l), m.Id)
 		// TODO I think we need to create a map, and set that instead?
-		levelMap := make(map[string]string)
+		// TODo d.GetOk
+		levelMap := d.Get(l).(map[string]interface{})
 		// TODO improve this
-		if v, ok := d.GetOk(fmt.Sprintf("%s.treshold", levels[i])); ok {
-			levelMap["threshold"] = v.(string)
-		}
-		if v, ok := d.GetOk(fmt.Sprintf("%s.notify", levels[i])); ok {
-			levelMap["notify"] = v.(string)
-		}
 		levelMap["id"] = fmt.Sprintf("%d", m.Id)
-		if err := d.Set(fmt.Sprintf(l), levelMap); err != nil {
+		if err := d.Set(l, levelMap); err != nil {
 			return err
 		}
 	}
