@@ -99,7 +99,7 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) (sub
 		log.Printf("[DEBUG] found %s.notify: %s", level, levelMap["notify"])
 		// TODO: this will
 		if fmt.Sprintf("@%s", v) != levelMap["notify"] {
-			log.Printf("[DEBUG] XX %s.notify was: %s found: %s", level, levelMap["notify"], level, v)
+			log.Printf("[DEBUG] XX %s.notify was: %s found: %s", level, levelMap["notify"], v)
 			monitor.Notify = v
 		}
 	}
