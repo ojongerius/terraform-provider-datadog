@@ -15,12 +15,10 @@ func destroyHelper(s *terraform.State, client *datadog.Client) error {
 		if _, err := client.GetMonitor(i); err != nil {
 			if strings.Contains(err.Error(), "404 Not Found") {
 				continue
-			} else {
-				return fmt.Errorf("Received an error retreieving monitor %s", err)
 			}
-		} else {
-			return fmt.Errorf("Monitor still exists. %s", err)
+			return fmt.Errorf("Received an error retrieving monitor %s", err)
 		}
+		return fmt.Errorf("Monitor still exists")
 	}
 	return nil
 }

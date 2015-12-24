@@ -14,7 +14,7 @@ func Provider() terraform.ResourceProvider {
 			"api_key": &schema.Schema{
 				Type:        schema.TypeString,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("DATADOG_API_KEY", nil), // TODO: not fetched from env?
+				DefaultFunc: schema.EnvDefaultFunc("DATADOG_API_KEY", nil),
 			},
 			"app_key": &schema.Schema{
 				Type:        schema.TypeString,

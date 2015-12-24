@@ -36,16 +36,15 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 	if _, err = client.GetMonitor(i); err != nil {
 		if strings.Contains(err.Error(), "404 Not Found") {
 			return false, nil
-		} else {
-			return false, err
 		}
+		return false, err
 	}
 
 	return true, nil
 }
 
 func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO: add support for this a read function.
+	// TODO: Add support for read function.
 	/* Read - This is called to resync the local state with the remote state.
 	Terraform guarantees that an existing ID will be set. This ID should be
 	used to look up the resource. Any remote data should be updated into the
@@ -78,7 +77,7 @@ func monitorUpdater(d *schema.ResourceData, meta interface{}, m *datadog.Monitor
 
 	m.Id = i
 
-	if err := client.UpdateMonitor(m); err != nil {
+	if err = client.UpdateMonitor(m); err != nil {
 		return fmt.Errorf("error updating montor: %s", err.Error())
 	}
 
