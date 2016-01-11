@@ -41,7 +41,7 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "space_aggr", "avg"),
 					resource.TestCheckResourceAttr(
-						"datadog_metric_alert.foo", "operator", "<"),
+						"datadog_metric_alert.foo", "operator", ">"),
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "notify_no_data", "false"),
 					resource.TestCheckResourceAttr(
@@ -49,7 +49,11 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "notify", "@hipchat-<name>"),
 					resource.TestCheckResourceAttr(
-						"datadog_metric_alert.foo", "threshold", "1"),
+						"datadog_metric_alert.foo", "thresholds.ok", "0"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "thresholds.warning", "1"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "thresholds.critical", "2"),
 				),
 			},
 		},
@@ -87,9 +91,14 @@ resource "datadog_metric_alert" "foo" {
   time_aggr = "avg" // avg, sum, max, min, change, or pct_change
   time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
   space_aggr = "avg" // avg, sum, min, or max
-  operator = "<" // <, <=, >, >=, ==, or !=
+  operator = ">" // <, <=, >, >=, ==, or !=
 
-  threshold = 1
+  thresholds {
+	ok = 0
+	warning = 1
+	critical = 2
+  }
+
   notify = "@hipchat-<name>"
 
   notify_no_data = false
