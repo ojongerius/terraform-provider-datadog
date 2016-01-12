@@ -31,7 +31,7 @@ resource "datadog_service_check" "foo" {
     message           = <<EOF
 {{#is_alert}}Service check foo is critical{/is_alert}}
 {{#is_warning}}Service check foo is at warning level{{/is_warning}}
-{{#is_recovery}}Service check foo has recovered.{{/is_recovery}}
+{{#is_recovery}}Service check foo has recovered{{/is_recovery}}
 Notify: @hipchat-channel
 EOF
     check = "datadog.agent.up"
@@ -58,7 +58,7 @@ resource "datadog_metric_alert" "bar" {
     message           = <<EOF
 {{#is_alert}}Metric alert check bar is critical{/is_alert}}
 {{#is_warning}}Metric alert bar is warning{{/is_warning}}
-{{#is_recovery}}Metric alert bar has recovered.{{/is_recovery}}
+{{#is_recovery}}Metric alert bar has recovered{{/is_recovery}}
 Notify: @hipchat-channel
 EOF
     metric      = "datadog.dogstatsd.packet.count"
