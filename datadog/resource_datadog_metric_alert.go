@@ -60,11 +60,6 @@ func resourceDatadogMetricAlert() *schema.Resource {
 
 			"thresholds": thresholdSchema(),
 
-			"notify": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-			},
-
 			// Additional Settings
 			"notify_no_data": &schema.Schema{
 				Type:     schema.TypeBool,
@@ -154,7 +149,7 @@ func buildMetricAlertStruct(d *schema.ResourceData) *datadog.Monitor {
 		Type:    "metric alert",
 		Query:   query,
 		Name:    name,
-		Message: fmt.Sprintf("%s %s", message, d.Get("notify")),
+		Message: message,
 		Options: o,
 	}
 

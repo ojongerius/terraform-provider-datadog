@@ -131,7 +131,7 @@ func buildServiceCheckStruct(d *schema.ResourceData) *datadog.Monitor {
 		Type:    "service check",
 		Query:   query,
 		Name:    monitorName,
-		Message: fmt.Sprintf("%s", message),
+		Message: message,
 		Options: o,
 	}
 

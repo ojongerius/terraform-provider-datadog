@@ -26,9 +26,14 @@ Download builds for Darwin, Linux and Windows from the [releases page](https://g
 Example configuration:
 
 ``` HCL
-resource "datadog_service_check" "bar" {
-    name = "name for service check bar"
-    message = "description for service check bar @pagerduty"
+resource "datadog_service_check" "foo" {
+    name = "name for service check foo"
+    message           = <<EOF
+{{#is_alert}}Service check foo is critical{/is_alert}}
+{{#is_warning}}Service check foo is at warning level{{/is_warning}}
+{{#is_recovery}}Service check foo has recovered.{{/is_recovery}}
+Notify: @hipchat-channel
+EOF
     check = "datadog.agent.up"
     check_count = 3
     tags = ["environment:foo", "host:bar"]
@@ -36,7 +41,7 @@ resource "datadog_service_check" "bar" {
     thresholds {
         ok       = 1 // Optional
         warning  = 2 // Optional
-        critical = 3 // Required, used to be "threshold"
+        critical = 3 // Required, formally known as "threshold"
     }
 
     notify_no_data = false
@@ -48,9 +53,14 @@ resource "datadog_service_check" "bar" {
 Example configuration:
 
 ``` HCL
-resource "datadog_metric_alert" "statsd_packet_count" {
-    name        = "TF: stats_packet_count"
-    message     = "statsd packet count {{host.hostname}}"
+resource "datadog_metric_alert" "bar" {
+    name        = "TF: bar"
+    message           = <<EOF
+{{#is_alert}}Metric alert check bar is critical{/is_alert}}
+{{#is_warning}}Metric alert bar is warning{{/is_warning}}
+{{#is_recovery}}Metric alert bar has recovered.{{/is_recovery}}
+Notify: @hipchat-channel
+EOF
     metric      = "datadog.dogstatsd.packet.count"
     tags        = ["*"]
     keys        = ["host"]
@@ -62,9 +72,8 @@ resource "datadog_metric_alert" "statsd_packet_count" {
     thresholds {
         ok       = 1 // Optional
         warning  = 2 // Optional
-        critical = 3 // Required, used to be "threshold"
+        critical = 3 // Required, formally known as "threshold"
     }
-    notify    = "@ojongerius@warning.com"
 }
 ```
 
@@ -75,7 +84,7 @@ Example configuration:
 ``` HCL
 resource "datadog_outlier_alert" "foo" {
   name = "name for outlier_alert foo"
-  message = "description for outlier_alert foo"
+  message = "description for outlier_alert @hipchat-channel"
 
   algorithm = "mad"
 
@@ -88,7 +97,6 @@ resource "datadog_outlier_alert" "foo" {
   space_aggr = "avg"      // avg, sum, min, or max
 
   threshold = 3.0         // tolerance
-  notify = "@hipchat-<name>"
 
   notify_no_data = false
 

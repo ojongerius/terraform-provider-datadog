@@ -21,7 +21,10 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "name", "name for metric_alert foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_metric_alert.foo", "message", "description for metric_alert foo"),
+						"datadog_metric_alert.foo", "message", "{{#is_alert}}Metric alert foo is critical"+
+							"{{/is_alert}}\n{{#is_warning}}Metric alert foo is at warning "+
+							"level{{/is_warning}}\n{{#is_recovery}}Metric alert foo has "+
+							"recovered{{/is_recovery}}\nNotify: @hipchat-channel\n"),
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "metric", "aws.ec2.cpu"),
 					resource.TestCheckResourceAttr(
@@ -46,8 +49,6 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 						"datadog_metric_alert.foo", "notify_no_data", "false"),
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "renotify_interval", "60"),
-					resource.TestCheckResourceAttr(
-						"datadog_metric_alert.foo", "notify", "@hipchat-<name>"),
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "thresholds.ok", "0"),
 					resource.TestCheckResourceAttr(
@@ -82,7 +83,12 @@ func testAccCheckDatadogMetricAlertExists(n string) resource.TestCheckFunc {
 const testAccCheckDatadogMetricAlertConfigBasic = `
 resource "datadog_metric_alert" "foo" {
   name = "name for metric_alert foo"
-  message = "description for metric_alert foo"
+  message           = <<EOF
+{{#is_alert}}Metric alert foo is critical{{/is_alert}}
+{{#is_warning}}Metric alert foo is at warning level{{/is_warning}}
+{{#is_recovery}}Metric alert foo has recovered{{/is_recovery}}
+Notify: @hipchat-channel
+EOF
 
   metric = "aws.ec2.cpu"
   tags = ["environment:foo", "host:foo"]
@@ -98,8 +104,6 @@ resource "datadog_metric_alert" "foo" {
 	warning = 1
 	critical = 2
   }
-
-  notify = "@hipchat-<name>"
 
   notify_no_data = false
   renotify_interval = 60
