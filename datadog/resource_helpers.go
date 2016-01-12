@@ -1,12 +1,57 @@
 package datadog
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
 	"strconv"
 	"strings"
 )
+
+func thresholdSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeMap,
+		Required: true,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"ok": &schema.Schema{
+					Type:     schema.TypeFloat,
+					Optional: true,
+				},
+				"warning": &schema.Schema{
+					Type:     schema.TypeFloat,
+					Optional: true,
+				},
+				"critical": &schema.Schema{
+					Type:     schema.TypeFloat,
+					Required: true,
+				},
+			},
+		},
+	}
+}
+
+func getThresholds(d *schema.ResourceData) (string, datadog.ThresholdCount) {
+	t := datadog.ThresholdCount{}
+
+	var threshold string
+
+	if r, ok := d.GetOk("thresholds.ok"); ok {
+		t.Ok = json.Number(r.(string))
+	}
+
+	if r, ok := d.GetOk("thresholds.warning"); ok {
+		t.Warning = json.Number(r.(string))
+	}
+
+	if r, ok := d.GetOk("thresholds.critical"); ok {
+		threshold = r.(string)
+		t.Critical = json.Number(r.(string))
+	}
+
+	return threshold, t
+}
 
 func resourceDatadogGenericDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*datadog.Client)
