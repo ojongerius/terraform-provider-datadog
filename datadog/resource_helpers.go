@@ -13,7 +13,6 @@ func thresholdSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeMap,
 		Required: true,
-		ForceNew: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"ok": &schema.Schema{
