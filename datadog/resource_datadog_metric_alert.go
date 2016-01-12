@@ -2,7 +2,6 @@ package datadog
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 
@@ -59,27 +58,7 @@ func resourceDatadogMetricAlert() *schema.Resource {
 				Required: true,
 			},
 
-			"thresholds": &schema.Schema{
-				Type:     schema.TypeMap,
-				Required: true,
-				ForceNew: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"ok": &schema.Schema{
-							Type:     schema.TypeFloat,
-							Optional: true,
-						},
-						"warning": &schema.Schema{
-							Type:     schema.TypeFloat,
-							Optional: true,
-						},
-						"critical": &schema.Schema{
-							Type:     schema.TypeFloat,
-							Required: true,
-						},
-					},
-				},
-			},
+			"thresholds": thresholdSchema(),
 
 			"notify": &schema.Schema{
 				Type:     schema.TypeString,
@@ -150,25 +129,7 @@ func buildMetricAlertStruct(d *schema.ResourceData) *datadog.Monitor {
 
 	keys := b.String()
 
-	// Handle thresholds
-	var threshold string
-	t := datadog.ThresholdCount{}
-
-	r, ok := d.GetOk("thresholds.ok")
-	if ok {
-		t.Ok = json.Number(r.(string))
-	}
-
-	r, ok = d.GetOk("thresholds.warning")
-	if ok {
-		t.Warning = json.Number(r.(string))
-	}
-
-	r, ok = d.GetOk("thresholds.critical")
-	if ok {
-		threshold = r.(string)
-		t.Critical = json.Number(r.(string))
-	}
+	threshold, thresholds := getThresholds(d)
 
 	operator := d.Get("operator").(string)
 	query := fmt.Sprintf("%s(%s):%s:%s{%s} %s %s %s", timeAggr,
@@ -186,7 +147,7 @@ func buildMetricAlertStruct(d *schema.ResourceData) *datadog.Monitor {
 		NotifyNoData:     d.Get("notify_no_data").(bool),
 		NoDataTimeframe:  d.Get("no_data_timeframe").(int),
 		RenotifyInterval: d.Get("renotify_interval").(int),
-		Thresholds:       t,
+		Thresholds:       thresholds,
 	}
 
 	m := datadog.Monitor{
