@@ -1,4 +1,8 @@
-## 0.0.4 (Dec 24, 2015)
+## 0.0.5 (unreleased)
+IMPROVEMENTS:
+  * add support for warning and critical values per monitor
+
+## 0.0.4 (Jan 12, 2016)
 FEATURES:
   * datadog_outlier_alert
 

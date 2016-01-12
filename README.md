@@ -27,14 +27,19 @@ Example configuration:
 
 ``` HCL
 resource "datadog_service_check" "bar" {
-  name = "name for service check bar"
-  message = "description for service check bar @pagerduty"
-  check = "datadog.agent.up"
-  check_count = 3
-  tags = ["environment:foo", "host:bar"]
-  keys = ["foo", "bar"]
+    name = "name for service check bar"
+    message = "description for service check bar @pagerduty"
+    check = "datadog.agent.up"
+    check_count = 3
+    tags = ["environment:foo", "host:bar"]
+    keys = ["foo", "bar"]
+    thresholds {
+        ok       = 1 // Optional
+        warning  = 2 // Optional
+        critical = 3 // Required, used to be "threshold"
+    }
 
-  notify_no_data = false
+    notify_no_data = false
 }
 ```
 
@@ -54,7 +59,11 @@ resource "datadog_metric_alert" "statsd_packet_count" {
     operator    = ">"
     notify_no_data = 0
     space_aggr  = "sum"
-    threshold = 2
+    thresholds {
+        ok       = 1 // Optional
+        warning  = 2 // Optional
+        critical = 3 // Required, used to be "threshold"
+    }
     notify    = "@ojongerius@warning.com"
 }
 ```
