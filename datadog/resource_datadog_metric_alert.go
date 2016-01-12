@@ -4,22 +4,19 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"strconv"
-	"strings"
-
-	"github.com/zorkian/go-datadog-api"
 
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/zorkian/go-datadog-api"
 )
 
 // resourceDatadogMetricAlert is a Datadog monitor resource
 func resourceDatadogMetricAlert() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogMetricAlertCreate,
-		Read:   resourceDatadogMetricAlertRead,
+		Read:   resourceDatadogGenericRead,
 		Update: resourceDatadogMetricAlertUpdate,
-		Delete: resourceDatadogMetricAlertDelete,
-		Exists: resourceDatadogMetricAlertExists,
+		Delete: resourceDatadogGenericDelete,
+		Exists: resourceDatadogGenericExists,
 
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
@@ -61,13 +58,13 @@ func resourceDatadogMetricAlert() *schema.Resource {
 				Required: true,
 			},
 
-			// Alert Settings
-			"warning": &schema.Schema{
-				Type:     schema.TypeMap,
+			"threshold": &schema.Schema{
+				Type:     schema.TypeString,
 				Required: true,
 			},
-			"critical": &schema.Schema{
-				Type:     schema.TypeMap,
+
+			"notify": &schema.Schema{
+				Type:     schema.TypeString,
 				Required: true,
 			},
 
@@ -93,7 +90,7 @@ func resourceDatadogMetricAlert() *schema.Resource {
 }
 
 // buildMonitorStruct returns a monitor struct
-func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor {
+func buildMetricAlertStruct(d *schema.ResourceData) *datadog.Monitor {
 	name := d.Get("name").(string)
 	message := d.Get("message").(string)
 	timeAggr := d.Get("time_aggr").(string)
@@ -143,7 +140,7 @@ func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mon
 		tagsParsed,
 		keys,
 		operator,
-		d.Get(fmt.Sprintf("%s.threshold", typeStr)))
+		d.Get("threshold"))
 
 	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", query))
 
@@ -156,8 +153,8 @@ func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mon
 	m := datadog.Monitor{
 		Type:    "metric alert",
 		Query:   query,
-		Name:    fmt.Sprintf("[%s] %s", typeStr, name),
-		Message: fmt.Sprintf("%s %s", message, d.Get(fmt.Sprintf("%s.notify", typeStr))),
+		Name:    name,
+		Message: fmt.Sprintf("%s %s", message, d.Get("notify")),
 		Options: o,
 	}
 
@@ -166,90 +163,11 @@ func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mon
 
 // resourceDatadogMetricAlertCreate creates a monitor.
 func resourceDatadogMetricAlertCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*datadog.Client)
 
-	w, err := client.CreateMonitor(buildMetricAlertStruct(d, "warning"))
-
-	if err != nil {
-		return fmt.Errorf("error creating warning: %s", err)
+	m := buildMetricAlertStruct(d)
+	if err := monitorCreator(d, meta, m); err != nil {
+		return err
 	}
-
-	c, cErr := client.CreateMonitor(buildMetricAlertStruct(d, "critical"))
-
-	if cErr != nil {
-		return fmt.Errorf("error creating warning: %s", cErr)
-	}
-
-	log.Printf("[DEBUG] Saving IDs: %s__%s", strconv.Itoa(w.Id), strconv.Itoa(c.Id))
-
-	d.SetId(fmt.Sprintf("%s__%s", strconv.Itoa(w.Id), strconv.Itoa(c.Id)))
-
-	return nil
-}
-
-// resourceDatadogMetricAlertDelete deletes a monitor.
-func resourceDatadogMetricAlertDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*datadog.Client)
-
-	for _, v := range strings.Split(d.Id(), "__") {
-		if v == "" {
-			return fmt.Errorf("Id not set.")
-		}
-		ID, iErr := strconv.Atoi(v)
-
-		if iErr != nil {
-			return iErr
-		}
-
-		err := client.DeleteMonitor(ID)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// resourceDatadogMetricAlertExists verifies a monitor exists.
-func resourceDatadogMetricAlertExists(d *schema.ResourceData, meta interface{}) (b bool, e error) {
-	// Exists - This is called to verify a resource still exists. It is called prior to Read,
-	// and lowers the burden of Read to be able to assume the resource exists.
-
-	client := meta.(*datadog.Client)
-
-	exists := false
-	for _, v := range strings.Split(d.Id(), "__") {
-		if v == "" {
-			log.Printf("[DEBUG] Could not parse IDs: %s", v)
-			return false, fmt.Errorf("Id not set.")
-		}
-		ID, iErr := strconv.Atoi(v)
-
-		if iErr != nil {
-			log.Printf("[DEBUG] Received error converting string: %s", iErr)
-			return false, iErr
-		}
-		if _, err := client.GetMonitor(ID); err != nil {
-			if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
-				log.Printf("[DEBUG] monitor does not exist: %s", err)
-				exists = false
-				continue
-			}
-			return false, err
-		}
-		exists = true
-	}
-
-	return exists, nil
-}
-
-// resourceDatadogMetricAlertRead synchronises Datadog and local state .
-func resourceDatadogMetricAlertRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO: add support for this a read function.
-	/* Read - This is called to resync the local state with the remote state.
-	Terraform guarantees that an existing ID will be set. This ID should be
-	used to look up the resource. Any remote data should be updated into the
-	local data. No changes to the remote resource are to be made.
-	*/
 
 	return nil
 }
@@ -258,48 +176,9 @@ func resourceDatadogMetricAlertRead(d *schema.ResourceData, meta interface{}) er
 func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] running update.")
 
-	split := strings.Split(d.Id(), "__")
-
-	wID, cID := split[0], split[1]
-
-	if wID == "" {
-		return fmt.Errorf("Id not set.")
-	}
-
-	if cID == "" {
-		return fmt.Errorf("Id not set.")
-	}
-
-	warningID, iErr := strconv.Atoi(wID)
-
-	if iErr != nil {
-		return iErr
-	}
-
-	criticalID, iErr := strconv.Atoi(cID)
-
-	if iErr != nil {
-		return iErr
-	}
-
-	client := meta.(*datadog.Client)
-
-	warningBody := buildMetricAlertStruct(d, "warning")
-	criticalBody := buildMetricAlertStruct(d, "critical")
-
-	warningBody.Id = warningID
-	criticalBody.Id = criticalID
-
-	wErr := client.UpdateMonitor(warningBody)
-
-	if wErr != nil {
-		return fmt.Errorf("error updating warning: %s", wErr.Error())
-	}
-
-	cErr := client.UpdateMonitor(criticalBody)
-
-	if cErr != nil {
-		return fmt.Errorf("error updating critical: %s", cErr.Error())
+	m := buildMetricAlertStruct(d)
+	if err := monitorUpdater(d, meta, m); err != nil {
+		return err
 	}
 
 	return nil

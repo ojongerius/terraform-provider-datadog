@@ -14,7 +14,7 @@ func Provider() terraform.ResourceProvider {
 			"api_key": &schema.Schema{
 				Type:        schema.TypeString,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("DATADOG_API_KEY", nil), // TODO: not fetched from env?
+				DefaultFunc: schema.EnvDefaultFunc("DATADOG_API_KEY", nil),
 			},
 			"app_key": &schema.Schema{
 				Type:        schema.TypeString,
@@ -24,10 +24,6 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			// TODO this is where the other resources will be mapped
-			"datadog_dashboard":     resourceDatadogDashboard(),
-			"datadog_graph":         resourceDatadogGraph(),
-			"datadog_monitor":       resourceDatadogMonitor(),
 			"datadog_service_check": resourceDatadogServiceCheck(),
 			"datadog_metric_alert":  resourceDatadogMetricAlert(),
 			"datadog_outlier_alert": resourceDatadogOutlierAlert(),
