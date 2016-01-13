@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
-	"log"
-	"os"
 	"strconv"
 	"strings"
 )
