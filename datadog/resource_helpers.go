@@ -76,9 +76,9 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 	// Workaround to handle upgrades from < 0.0.4
 	if strings.Contains(d.Id(), "__") {
 		return false, fmt.Errorf("Monitor ID contains __, which is pre v0.0.4 old behaviour.\n    You have the following options:\n" +
-			"    * Run scripts/migration_helper.py to generate a new statefile and clean up monitors\n" +
-			"        * Alternatively:\n        * Delete all your metric_check resources and recreate them\n" +
-			"        * Manually remove half of the resources and hack the state file")
+			"    * Run https://github.com/ojongerius/terraform-provider-datadog/blob/master/scripts/migration_helper.py to generate a new statefile and clean up monitors\n" +
+			"    * Mannualy fix this by deleting all your metric_check resources and recreate them, " +
+			"or manually remove half of the resources and hack the state file.\n")
 	}
 
 	i, err := strconv.Atoi(d.Id())
