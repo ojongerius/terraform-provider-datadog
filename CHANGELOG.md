@@ -1,7 +1,8 @@
 ## 0.0.5 (unreleased)
 IMPROVEMENTS:
   * add support for warning and critical values per monitor
-  * detect pre 0.0.4 resources, and allow conversion by exporting TF_YOLO (use at your own risk)
+  * detect pre 0.0.4 resources, and allow conversion using helper script
+    script/migration_helper.py
 
 ## 0.0.4 (Jan 12, 2016)
 FEATURES:
