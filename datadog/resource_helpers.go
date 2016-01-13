@@ -77,28 +77,10 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 
 	// Workaround to handle upgrades from < 0.0.4
 	if strings.Contains(d.Id(), "__") {
-		if v := os.Getenv("TF_YOLO"); v != "" {
-			IDs := strings.Split(d.Id(), "__")
-
-			ID, _ := strconv.Atoi(IDs[1])
-			log.Printf("Deleting monitor %d", ID)
-			err := client.DeleteMonitor(ID)
-			if err != nil {
-				return false, fmt.Errorf("Error while deleting monitor: %s", err)
-			}
-
-			log.Printf("Rewriting ID %s to %s", d.Id(), IDs[0])
-			d.SetId(IDs[0])
-
-			return true, nil
-		}
-
 		return false, fmt.Errorf("Monitor ID contains __, which is pre v0.0.4 old behaviour.\n    You have the following options:\n" +
-			"    * Set environment variable TF_YOLO to true, and Terraform will rewrite your resources in a planning and \n" +
-			"        apply run. For resources that have 2 monitors associated with them it will remove one monitor and update\n" +
-			"        the remaing one. For this you will have to running 'terraform plan' to remove and rewrite and terraform apply\n" +
-			"        to update the remaining monitor.\n    * Alternatives are:\n        * delete all your metric_check resources and recreate them\n" +
-			"        * manually remove half of the resources and hack the state file")
+			"    * Run scripts/migration_helper.py to generate a new statefile and clean up monitors\n" +
+			"        * Alternatively:\n        * Delete all your metric_check resources and recreate them\n" +
+			"        * Manually remove half of the resources and hack the state file")
 	}
 
 	i, err := strconv.Atoi(d.Id())
