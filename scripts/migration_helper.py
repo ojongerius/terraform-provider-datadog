@@ -60,7 +60,7 @@ def main():
     migrator.delete_monitors()
 
     print("Done with state conversion and monitor removal, you will need to:\n * Inspect and move \
-terraform.tfstate.new to terrafrom.tfsate\n * Run terraform plan and apply to finish the migration.")
+terraform.tfstate.new to terrafrom.tfstate\n * Run terraform plan and apply to finish the migration.")
 
 if __name__ == '__main__':
     main()
