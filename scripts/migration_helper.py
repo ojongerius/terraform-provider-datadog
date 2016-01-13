@@ -46,7 +46,7 @@ class MigrateDatadogProvider(object):
         initialize(**options)
         logging.basicConfig()
 
-        [api.Monitor.delete(x) for x in self.delete_list]
+        [api.Monitor.delete(x.decode('utf-8')) for x in self.delete_list]
 
 
 def main():
@@ -60,7 +60,7 @@ def main():
     migrator.delete_monitors()
 
     print("Done with state conversion and monitor removal, you will need to:\n * Inspect and move \
-        terraform.tfstate.new to terrafrom.tfsate\n * Run terraform plan and apply to finish the migration.")
+terraform.tfstate.new to terrafrom.tfsate\n * Run terraform plan and apply to finish the migration.")
 
 if __name__ == '__main__':
     main()
