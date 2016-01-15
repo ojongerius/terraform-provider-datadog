@@ -23,6 +23,16 @@ Download builds for Darwin, Linux and Windows from the [releases page](https://g
 ## Resources
 ### Service Checks
 
+This plugin will create a monitor, but not a service check. By default it will
+monitor reports from all hosts that run a given service check.
+
+The flow would be:
+
+* Run service checks on host(s)
+* Create monitors for those service checks using this plugin
+
+Filter which hosts / groups are monitored by using [tags](http://docs.datadoghq.com/guides/tagging/).
+
 Example configuration:
 
 ``` HCL
