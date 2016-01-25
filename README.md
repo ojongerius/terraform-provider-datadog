@@ -76,9 +76,15 @@ EOF
     keys        = ["host"]
     time_aggr   = "avg"
     time_window = "last_1h"
+    space_aggr  = "sum"
+
+    // the `query` parameter can also be used instead of the above parameters
+    // `query = “avg(last_1h):sum:datadog.dogstatsd.packet.count{*} by {host}”`
+    // is equivalent to specifying the above parameters
+    // if `query` is used `metric`, `tags`, `keys`, `time_aggr`, `time_window` and `space_aggr` must not be used
+
     operator    = ">"
     notify_no_data = 0
-    space_aggr  = "sum"
     thresholds {
         ok       = 1 // Optional
         warning  = 2 // Optional
