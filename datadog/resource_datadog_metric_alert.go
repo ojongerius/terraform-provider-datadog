@@ -195,7 +195,6 @@ func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) 
 	if err := monitorUpdater(d, meta, m); err != nil {
 		return err
 	}
-	d.SetId(fmt.Sprintf("%d__%d", ids[0], ids[1]))
 
 	return nil
 }
