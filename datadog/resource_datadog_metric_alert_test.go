@@ -1,9 +1,6 @@
 package datadog
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/resource"
@@ -24,7 +21,10 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "name", "name for metric_alert foo"),
 					resource.TestCheckResourceAttr(
-						"datadog_metric_alert.foo", "message", "description for metric_alert foo"),
+						"datadog_metric_alert.foo", "message", "{{#is_alert}}Metric alert foo is critical"+
+							"{{/is_alert}}\n{{#is_warning}}Metric alert foo is at warning "+
+							"level{{/is_warning}}\n{{#is_recovery}}Metric alert foo has "+
+							"recovered{{/is_recovery}}\nNotify: @hipchat-channel\n"),
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "metric", "aws.ec2.cpu"),
 					resource.TestCheckResourceAttr(
@@ -44,12 +44,54 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "space_aggr", "avg"),
 					resource.TestCheckResourceAttr(
-						"datadog_metric_alert.foo", "operator", "<"),
+						"datadog_metric_alert.foo", "operator", ">"),
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "notify_no_data", "false"),
 					resource.TestCheckResourceAttr(
 						"datadog_metric_alert.foo", "renotify_interval", "60"),
-					// TODO: add warning and critical
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "thresholds.ok", "0"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "thresholds.warning", "1"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "thresholds.critical", "2"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccDatadogMetricAlert_Query(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckDatadogMetricAlertDestroy,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config: testAccCheckDatadogMetricAlertConfigQuery,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDatadogMetricAlertExists("datadog_metric_alert.foo"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "name", "name for metric_alert foo"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "message", "{{#is_alert}}Metric alert foo is critical"+
+							"{{/is_alert}}\n{{#is_warning}}Metric alert foo is at warning "+
+							"level{{/is_warning}}\n{{#is_recovery}}Metric alert foo has "+
+							"recovered{{/is_recovery}}\nNotify: @hipchat-channel\n"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "query", "avg(last_1h):avg:aws.ec2.cpu{environment:foo,host:foo} by {host}"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "operator", ">"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "notify_no_data", "false"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "renotify_interval", "60"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "thresholds.ok", "0"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "thresholds.warning", "1"),
+					resource.TestCheckResourceAttr(
+						"datadog_metric_alert.foo", "thresholds.critical", "2"),
 				),
 			},
 		},
@@ -57,30 +99,10 @@ func TestAccDatadogMetricAlert_Basic(t *testing.T) {
 }
 
 func testAccCheckDatadogMetricAlertDestroy(s *terraform.State) error {
-
 	client := testAccProvider.Meta().(*datadog.Client)
-	for _, rs := range s.RootModule().Resources {
-		for _, v := range strings.Split(rs.Primary.ID, "__") {
-			if v == "" {
-				fmt.Printf("Could not parse IDs. %s", v)
-				return fmt.Errorf("Id not set.")
-			}
-			ID, err := strconv.Atoi(v)
-			if err != nil {
-				fmt.Printf("Received error converting string %s", err)
-				return err
-			}
-			if _, err := client.GetMonitor(ID); err != nil {
-				// 404 is what we want, anything else is an error. Sadly our API will return a string like so:
-				// return errors.New("API error: " + resp.Status)
-				// For now we'll use unfold :|
-				if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
-					continue
-				}
-				return fmt.Errorf("Received an error retrieving monitor %s", err)
-			}
-			fmt.Errorf("Monitor still exists. %s", err)
-		}
+
+	if err := destroyHelper(s, client); err != nil {
+		return err
 	}
 	return nil
 }
@@ -88,21 +110,8 @@ func testAccCheckDatadogMetricAlertDestroy(s *terraform.State) error {
 func testAccCheckDatadogMetricAlertExists(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccProvider.Meta().(*datadog.Client)
-		for _, rs := range s.RootModule().Resources {
-			for _, v := range strings.Split(rs.Primary.ID, "__") {
-				if v == "" {
-					fmt.Printf("Could not parse IDs. %s", v)
-					return fmt.Errorf("Id not set.")
-				}
-				ID, iErr := strconv.Atoi(v)
-				if iErr != nil {
-					return fmt.Errorf("Received error converting string %s", iErr)
-				}
-
-				if _, err := client.GetMonitor(ID); err != nil {
-					return fmt.Errorf("Received an error retrieving monitor %s", err)
-				}
-			}
+		if err := existsHelper(s, client); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -111,7 +120,12 @@ func testAccCheckDatadogMetricAlertExists(n string) resource.TestCheckFunc {
 const testAccCheckDatadogMetricAlertConfigBasic = `
 resource "datadog_metric_alert" "foo" {
   name = "name for metric_alert foo"
-  message = "description for metric_alert foo"
+  message           = <<EOF
+{{#is_alert}}Metric alert foo is critical{{/is_alert}}
+{{#is_warning}}Metric alert foo is at warning level{{/is_warning}}
+{{#is_recovery}}Metric alert foo has recovered{{/is_recovery}}
+Notify: @hipchat-channel
+EOF
 
   metric = "aws.ec2.cpu"
   tags = ["environment:foo", "host:foo"]
@@ -120,20 +134,37 @@ resource "datadog_metric_alert" "foo" {
   time_aggr = "avg" // avg, sum, max, min, change, or pct_change
   time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
   space_aggr = "avg" // avg, sum, min, or max
-  operator = "<" // <, <=, >, >=, ==, or !=
+  operator = ">" // <, <=, >, >=, ==, or !=
 
-  warning {
-    threshold = 0
-    notify = "@hipchat-<name>"
-  }
-
-  critical {
-    threshold = 0
-    notify = "@pagerduty"
+  thresholds {
+	ok = 0
+	warning = 1
+	critical = 2
   }
 
   notify_no_data = false
   renotify_interval = 60
+}
+`
+const testAccCheckDatadogMetricAlertConfigQuery = `
+resource "datadog_metric_alert" "foo" {
+  name = "name for metric_alert foo"
+  message           = <<EOF
+{{#is_alert}}Metric alert foo is critical{{/is_alert}}
+{{#is_warning}}Metric alert foo is at warning level{{/is_warning}}
+{{#is_recovery}}Metric alert foo has recovered{{/is_recovery}}
+Notify: @hipchat-channel
+EOF
+  operator = ">" // <, <=, >, >=, ==, or !=
+  query = "avg(last_1h):avg:aws.ec2.cpu{environment:foo,host:foo} by {host}"
 
+  thresholds {
+	ok = 0
+	warning = 1
+	critical = 2
+  }
+
+  notify_no_data = false
+  renotify_interval = 60
 }
 `

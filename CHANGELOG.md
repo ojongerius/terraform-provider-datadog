@@ -1,3 +1,18 @@
+## 0.0.5 (unreleased)
+IMPROVEMENTS:
+  * add support for warning and critical values per monitor
+  * detect pre 0.0.4 resources, and allow conversion using helper script
+    script/migration_helper.py
+
+## 0.0.4 (Jan 12, 2016)
+FEATURES:
+  * datadog_outlier_alert
+
+CHANGES:
+  * removal of datadog_monitor, datadog_graph, datadog_dashboard
+  * each resource now generates *one* resource per count. This is a breaking change,
+    old metric_alert resources are not supported.
+
 ## 0.0.3 (unreleased)
 FEATURES:
 

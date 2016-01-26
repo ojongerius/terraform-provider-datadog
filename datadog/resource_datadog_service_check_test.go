@@ -1,9 +1,6 @@
 package datadog
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/resource"
@@ -24,7 +21,10 @@ func TestAccDatadogServiceCheck_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_service_check.bar", "name", "name for service check bar"),
 					resource.TestCheckResourceAttr(
-						"datadog_service_check.bar", "message", "description for service check bar"),
+						"datadog_service_check.bar", "message", "{{#is_alert}}Service check bar is critical"+
+							"{{/is_alert}}\n{{#is_warning}}Service check bar is at warning "+
+							"level{{/is_warning}}\n{{#is_recovery}}Service check bar has "+
+							"recovered{{/is_recovery}}\nNotify: @hipchat-channel\n"),
 					resource.TestCheckResourceAttr(
 						"datadog_service_check.bar", "check", "datadog.agent.up"),
 					resource.TestCheckResourceAttr(
@@ -41,6 +41,12 @@ func TestAccDatadogServiceCheck_Basic(t *testing.T) {
 						"datadog_service_check.bar", "keys.1", "bar"),
 					resource.TestCheckResourceAttr(
 						"datadog_service_check.bar", "keys.#", "2"),
+					resource.TestCheckResourceAttr(
+						"datadog_service_check.bar", "thresholds.ok", "0"),
+					resource.TestCheckResourceAttr(
+						"datadog_service_check.bar", "thresholds.warning", "1"),
+					resource.TestCheckResourceAttr(
+						"datadog_service_check.bar", "thresholds.critical", "2"),
 				),
 			},
 		},
@@ -49,17 +55,9 @@ func TestAccDatadogServiceCheck_Basic(t *testing.T) {
 
 func testAccCheckDatadogServiceCheckDestroy(s *terraform.State) error {
 	client := testAccProvider.Meta().(*datadog.Client)
-	for _, r := range s.RootModule().Resources {
-		i, _ := strconv.Atoi(r.Primary.ID)
-		if _, err := client.GetMonitor(i); err != nil {
-			// 404 is what we want, anything else is an error. Sadly our API will return a string like so:
-			// return errors.New("API error: " + resp.Status)
-			// For now we'll use unfold :|
-			if strings.EqualFold(err.Error(), "API error: 404 Not Found") {
-				continue
-			}
-			return fmt.Errorf("Received an error retreieving monitor %s", err)
-		}
+
+	if err := destroyHelper(s, client); err != nil {
+		return err
 	}
 	return nil
 }
@@ -67,11 +65,8 @@ func testAccCheckDatadogServiceCheckDestroy(s *terraform.State) error {
 func testAccCheckDatadogServiceCheckExists(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccProvider.Meta().(*datadog.Client)
-		for _, r := range s.RootModule().Resources {
-			i, _ := strconv.Atoi(r.Primary.ID)
-			if _, err := client.GetMonitor(i); err != nil {
-				return fmt.Errorf("Received an error retrieving monitor %s", err)
-			}
+		if err := existsHelper(s, client); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -80,11 +75,21 @@ func testAccCheckDatadogServiceCheckExists(n string) resource.TestCheckFunc {
 const testAccCheckDatadogServiceCheckConfigBasic = `
 resource "datadog_service_check" "bar" {
   name = "name for service check bar"
-  message = "description for service check bar"
+  message           = <<EOF
+{{#is_alert}}Service check bar is critical{{/is_alert}}
+{{#is_warning}}Service check bar is at warning level{{/is_warning}}
+{{#is_recovery}}Service check bar has recovered{{/is_recovery}}
+Notify: @hipchat-channel
+EOF
   tags = ["environment:foo", "host:bar"]
   keys = ["foo", "bar"]
   check = "datadog.agent.up"
-  check_count = 3
+
+  thresholds {
+	ok = 0
+	warning = 1
+	critical = 2
+  }
 
   notify_no_data = false
 }

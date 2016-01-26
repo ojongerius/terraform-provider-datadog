@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"strconv"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
@@ -14,9 +13,9 @@ import (
 func resourceDatadogServiceCheck() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceDatadogServiceCheckCreate,
-		Read:   resourceDatadogServiceCheckRead,
+		Read:   resourceDatadogGenericRead,
 		Update: resourceDatadogServiceCheckUpdate,
-		Delete: resourceDatadogServiceCheckDelete,
+		Delete: resourceDatadogGenericDelete,
 		Exists: resourceDatadogGenericExists,
 
 		Schema: map[string]*schema.Schema{
@@ -28,10 +27,9 @@ func resourceDatadogServiceCheck() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"check_count": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-			},
+
+			"thresholds": thresholdSchema(),
+
 			"tags": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -111,11 +109,12 @@ func buildServiceCheckStruct(d *schema.ResourceData) *datadog.Monitor {
 	var query string
 
 	check := d.Get("check").(string)
-	checkCount := d.Get("check_count").(string)
 
 	// Examples queries
 	// "http.can_connect".over("instance:buildeng_http","production").last(2).count_by_status()
 	// "http.can_connect".over("*").by("host","instance","url").last(2).count_by_status()
+
+	checkCount, thresholds := getThresholds(d)
 
 	query = fmt.Sprintf("\"%s\".over(%s)%s.last(%s).count_by_status()", check, tagsParsed, keys, checkCount)
 	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", query))
@@ -125,13 +124,14 @@ func buildServiceCheckStruct(d *schema.ResourceData) *datadog.Monitor {
 		NotifyNoData:     d.Get("notify_no_data").(bool),
 		NoDataTimeframe:  d.Get("no_data_timeframe").(int),
 		RenotifyInterval: d.Get("renotify_interval").(int),
+		Thresholds:       thresholds,
 	}
 
 	m := datadog.Monitor{
 		Type:    "service check",
 		Query:   query,
 		Name:    monitorName,
-		Message: fmt.Sprintf("%s", message),
+		Message: message,
 		Options: o,
 	}
 
@@ -141,43 +141,11 @@ func buildServiceCheckStruct(d *schema.ResourceData) *datadog.Monitor {
 // resourceDatadogServiceCheckCreate creates a monitor.
 func resourceDatadogServiceCheckCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Print("[DEBUG] creating monitor")
-	client := meta.(*datadog.Client)
 
-	log.Print("[DEBUG] Creating service check")
-	m, err := client.CreateMonitor(buildServiceCheckStruct(d))
-	if err != nil {
-		return fmt.Errorf("error creating service check: %s", err)
-	}
-
-	d.SetId(strconv.Itoa(m.Id))
-	return nil
-}
-
-// resourceDatadogServiceCheckDelete deletes a monitor.
-func resourceDatadogServiceCheckDelete(d *schema.ResourceData, meta interface{}) error {
-	log.Print("[DEBUG] deleting monitor")
-	client := meta.(*datadog.Client)
-
-	log.Print("[DEBUG] Deleting service check")
-	ID, err := strconv.Atoi(d.Id())
-	if err != nil {
+	m := buildServiceCheckStruct(d)
+	if err := monitorCreator(d, meta, m); err != nil {
 		return err
 	}
-
-	if err = client.DeleteMonitor(ID); err != nil {
-		return err
-	}
-	return nil
-}
-
-// resourceDatadogServiceCheckRead synchronises Datadog and local state .
-func resourceDatadogServiceCheckRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO: add support for this a read function.
-	/* Read - This is called to resync the local state with the remote state.
-	Terraform guarantees that an existing ID will be set. This ID should be
-	used to look up the resource. Any remote data should be updated into the
-	local data. No changes to the remote resource are to be made.
-	*/
 
 	return nil
 }
@@ -186,18 +154,10 @@ func resourceDatadogServiceCheckRead(d *schema.ResourceData, meta interface{}) e
 func resourceDatadogServiceCheckUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] running update.")
 
-	client := meta.(*datadog.Client)
-
-	body := buildServiceCheckStruct(d)
-
-	ID, err := strconv.Atoi(d.Id())
-	if err != nil {
+	m := buildServiceCheckStruct(d)
+	if err := monitorUpdater(d, meta, m); err != nil {
 		return err
 	}
 
-	body.Id = ID
-	if err = client.UpdateMonitor(body); err != nil {
-		return fmt.Errorf("error updating warning: %s", err.Error())
-	}
 	return nil
 }

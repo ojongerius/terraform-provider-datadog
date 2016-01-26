@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"strconv"
-	"strings"
-
-	"github.com/zorkian/go-datadog-api"
 
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/zorkian/go-datadog-api"
 )
 
 // resourceDatadogMetricAlert is a Datadog monitor resource
@@ -18,7 +15,7 @@ func resourceDatadogMetricAlert() *schema.Resource {
 		Create: resourceDatadogMetricAlertCreate,
 		Read:   resourceDatadogGenericRead,
 		Update: resourceDatadogMetricAlertUpdate,
-		Delete: resourceDatadogMetricAlertDelete,
+		Delete: resourceDatadogGenericDelete,
 		Exists: resourceDatadogGenericExists,
 
 		Schema: map[string]*schema.Schema{
@@ -27,8 +24,9 @@ func resourceDatadogMetricAlert() *schema.Resource {
 				Required: true,
 			},
 			"metric": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"query"},
 			},
 			"tags": &schema.Schema{
 				Type:     schema.TypeList,
@@ -36,21 +34,25 @@ func resourceDatadogMetricAlert() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"keys": &schema.Schema{
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Type:          schema.TypeList,
+				Optional:      true,
+				Elem:          &schema.Schema{Type: schema.TypeString},
+				ConflictsWith: []string{"query"},
 			},
 			"time_aggr": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"query"},
 			},
 			"time_window": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"query"},
 			},
 			"space_aggr": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"query"},
 			},
 			"operator": &schema.Schema{
 				Type:     schema.TypeString,
@@ -61,59 +63,15 @@ func resourceDatadogMetricAlert() *schema.Resource {
 				Required: true,
 			},
 
-			// Alert Settings
-			"warning": &schema.Schema{
-				Type:     schema.TypeMap,
-				Optional: true, // TODO does this make sense?
-				/*
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"id": &schema.Schema{
-								Type:     schema.TypeInt,
-								Optional: true,
-								Default: 0,
-							},
-							"foo": &schema.Schema{
-								Type:     schema.TypeString,
-								Optional: true,
-								Default: "foo",
-							},
-							"threshold": &schema.Schema{
-								Type:     schema.TypeString,
-								Optional: true,
-							},
-							"notify": &schema.Schema{
-								Type:     schema.TypeString,
-								Optional: true,
-							},
-						},
-					},
-				*/
+			// Optional Query for custom monitors
+
+			"query": &schema.Schema{
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"time_aggr", "time_window", "space_aggr", "metric", "keys"},
 			},
-			// Alert Settings
-			"critical": &schema.Schema{
-				Type:     schema.TypeMap,
-				Optional: true, // TODO does this make sense?
-				/*
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"id": &schema.Schema{
-								Type:     schema.TypeInt,
-								Optional: true,
-								Default: 0,
-							},
-							"threshold": &schema.Schema{
-								Type:     schema.TypeString,
-								Optional: true,
-							},
-							"notify": &schema.Schema{
-								Type:     schema.TypeString,
-								Optional: true,
-							},
-						},
-					},
-				*/
-			},
+
+			"thresholds": thresholdSchema(),
 
 			// Additional Settings
 			"notify_no_data": &schema.Schema{
@@ -137,13 +95,14 @@ func resourceDatadogMetricAlert() *schema.Resource {
 }
 
 // buildMonitorStruct returns a monitor struct
-func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Monitor {
+func buildMetricAlertStruct(d *schema.ResourceData) *datadog.Monitor {
 	name := d.Get("name").(string)
 	message := d.Get("message").(string)
 	timeAggr := d.Get("time_aggr").(string)
 	timeWindow := d.Get("time_window").(string)
 	spaceAggr := d.Get("space_aggr").(string)
 	metric := d.Get("metric").(string)
+	query := d.Get("query").(string)
 
 	// Tags are are no separate resource/gettable, so some trickery is needed
 	var buffer bytes.Buffer
@@ -179,29 +138,39 @@ func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mon
 
 	keys := b.String()
 
-	operator := d.Get("operator").(string)
-	query := fmt.Sprintf("%s(%s):%s:%s{%s} %s %s %s", timeAggr,
-		timeWindow,
-		spaceAggr,
-		metric,
-		tagsParsed,
-		keys,
-		operator,
-		d.Get(fmt.Sprintf("%s.threshold", typeStr)))
+	threshold, thresholds := getThresholds(d)
 
-	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", query))
+	operator := d.Get("operator").(string)
+
+	var q string
+
+	if query == "" {
+		q = fmt.Sprintf("%s(%s):%s:%s{%s} %s %s %s", timeAggr,
+			timeWindow,
+			spaceAggr,
+			metric,
+			tagsParsed,
+			keys,
+			operator,
+			threshold)
+	} else {
+		q = fmt.Sprintf("%s %s %s", query, operator, threshold)
+	}
+
+	log.Print(fmt.Sprintf("[DEBUG] submitting query: %s", q))
 
 	o := datadog.Options{
 		NotifyNoData:     d.Get("notify_no_data").(bool),
 		NoDataTimeframe:  d.Get("no_data_timeframe").(int),
 		RenotifyInterval: d.Get("renotify_interval").(int),
+		Thresholds:       thresholds,
 	}
 
 	m := datadog.Monitor{
 		Type:    "metric alert",
-		Query:   query,
-		Name:    fmt.Sprintf("[%s] %s", typeStr, name),
-		Message: fmt.Sprintf("%s %s", message, d.Get(fmt.Sprintf("%s.notify", typeStr))),
+		Query:   q,
+		Name:    name,
+		Message: message,
 		Options: o,
 	}
 
@@ -209,56 +178,12 @@ func buildMetricAlertStruct(d *schema.ResourceData, typeStr string) *datadog.Mon
 }
 
 func resourceDatadogMetricAlertCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*datadog.Client)
 
-	// TODO: refactor out into generic create function that only takes the specific
-	// struct. After wire duplexer.
-	levels := []string{"warning", "critical"}
-	ids := make([]int, len(levels))
-
-	for i, l := range levels {
-		m, err := client.CreateMonitor(buildMetricAlertStruct(d, l))
-		if err != nil {
-			return fmt.Errorf("error creating %s: %s", l, err)
-		}
-		ids[i] = m.Id
-		log.Printf("XX Setting %s to %d", fmt.Sprintf("%s.id", l), m.Id)
-		// TODO I think we need to create a map, and set that instead?
-		// TODo d.GetOk
-		levelMap := d.Get(l).(map[string]interface{})
-		// TODO improve this
-		levelMap["id"] = fmt.Sprintf("%d", m.Id)
-		if err := d.Set(l, levelMap); err != nil {
-			return err
-		}
+	m := buildMetricAlertStruct(d)
+	if err := monitorCreator(d, meta, m); err != nil {
+		return err
 	}
 
-	log.Printf("[DEBUG] Saving IDs: %s__%s", strconv.Itoa(ids[0]), strconv.Itoa(ids[0]))
-	d.SetId(fmt.Sprintf("%s__%s", strconv.Itoa(ids[0]), strconv.Itoa(ids[1])))
-
-	return nil
-}
-
-func resourceDatadogMetricAlertDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*datadog.Client)
-
-	// TODO: refactor, wire duplexer in
-	levels := []string{"warning", "critical"}
-
-	for i, v := range strings.Split(d.Id(), "__") {
-		if v == "" {
-			return fmt.Errorf("Id not set.")
-		}
-		ID, err := strconv.Atoi(v)
-		if err != nil {
-			return err
-		}
-
-		if err = client.DeleteMonitor(ID); err != nil {
-			return err
-		}
-		d.Set(fmt.Sprintf("%s.id", levels[i]), 0)
-	}
 	return nil
 }
 
@@ -266,51 +191,8 @@ func resourceDatadogMetricAlertUpdate(d *schema.ResourceData, meta interface{}) 
 	log.Printf("[DEBUG] running update.")
 	// TODO: refactor to call the "duplexer" instead of all this split bullshit
 
-	client := meta.(*datadog.Client)
-
-	levels := []string{"warning", "critical"}
-	ids := make([]int, len(levels))
-
-	for i, v := range strings.Split(d.Id(), "__") {
-		if v == "" {
-			return fmt.Errorf("Id not set.")
-		}
-
-		// Build monitor body for our level
-		monitorBody := buildMetricAlertStruct(d, levels[i])
-
-		var err error
-		monitorBody.Id, err = strconv.Atoi(v)
-		if err != nil {
-			return err
-		}
-
-		// Save body to update state in the end
-		ids[i] = monitorBody.Id
-		// Update monitor, 404 implies our monitor may have been manually deleted, and
-		// attempt to create it.
-		if err = client.UpdateMonitor(monitorBody); err != nil {
-			if strings.EqualFold(err.Error(), "API error 404 Not Found: {\"errors\":[\"Monitor not found\"]}") {
-				// TODO: remove XX when done log.
-				log.Printf("[DEBUG] XX monitor does not exist, recreating")
-				m, err := client.CreateMonitor(monitorBody)
-				if err != nil {
-					return fmt.Errorf("error creating warning: %s", err.Error())
-				}
-				// This is our new ID
-				ids[i] = m.Id
-				// TODO: Save it here, WIP
-				d.Set(fmt.Sprintf("%s.id", levels[i]), m.Id)
-			}
-			return fmt.Errorf("error updating warning: %s", err.Error())
-		}
-	}
-
-	// TODO: dedupe
-	if err := d.Set(fmt.Sprintf("%s.id", levels[0]), ids[0]); err != nil {
-		return err
-	}
-	if err := d.Set(fmt.Sprintf("%s.id", levels[1]), ids[1]); err != nil {
+	m := buildMetricAlertStruct(d)
+	if err := monitorUpdater(d, meta, m); err != nil {
 		return err
 	}
 	d.SetId(fmt.Sprintf("%d__%d", ids[0], ids[1]))

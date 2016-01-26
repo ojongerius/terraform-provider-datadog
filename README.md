@@ -5,43 +5,56 @@ status](https://travis-ci.org/ojongerius/terraform-provider-datadog.svg)](https:
 
 A [Terraform](https://github.com/hashicorp/terraform) plugin that provides resources for [Datadog](https://www.datadoghq.com/).
 
-It currently supports 4 resources:
+It currently supports 3 resources based on the Datadog monitor originally contributed by [Vincenzo Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio).
 
 * *Service Checks*: datadog_service_check
-* *Metric Alerts*: datadog_metric_alert (*experimental*)
-* *Outlier Alerts*: datadog_outlier_alert (*experimental*, see
-  [introducing-outlier-detection-in-datadog](https://www.datadoghq.com/blog/introducing-outlier-detection-in-datadog/).
-* *Monitors*: datadog_monitor -originally contributed by [Vincenzo
-  Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio). This will be renamed to datadog_metric_alert in the future.
-* *Timeboards*: datadog_dashboard
-* *Graphs*: datadog_graph
+* *Metric Alerts*: datadog_metric_alert
+* *Outlier Alerts*: datadog_outlier_alert, see [introducing-outlier-detection-in-datadog](https://www.datadoghq.com/blog/introducing-outlier-detection-in-datadog/).
 
-Feel free to open new [issues](https://github.com/ojongerius/terraform-provider-datadog/issues) for extra resources or bugs you find. After finishing
-polishing of the current resources I'm planning to add a
-[Screenboard](https://github.com/ojongerius/terraform-provider-datadog/issues/4).
+Feel free to open new [issues](https://github.com/ojongerius/terraform-provider-datadog/issues) for extra resources or bugs you find.
 
 Want to contribute? Find a resource you want to add or work on an issue over
 [here]( 
 https://github.com/ojongerius/terraform-provider-datadog/issues).
 
 ##  Download
-Download builds for Darwin, Linux and Windows from the [releases page](https://github.com/ojongerius/terraform-provider-datadog/releases/).
+Download builds for Darwin, Linux and Windows from the [releases page](https://github.com/ojongerius/terraform-provider-datadog/releases/). Pre-release is rebuild on each merge to master.
 
 ## Resources
 ### Service Checks
 
+This plugin will create a monitor, but not a service check. By default it will
+monitor reports from all hosts that run a given service check.
+
+The flow would be:
+
+* Run service checks on host(s)
+* Create monitors for those service checks using this plugin
+
+Filter which hosts / groups are monitored by using [tags](http://docs.datadoghq.com/guides/tagging/).
+
 Example configuration:
 
 ``` HCL
-resource "datadog_service_check" "bar" {
-  name = "name for service check bar"
-  message = "description for service check bar @pagerduty"
-  check = "datadog.agent.up"
-  check_count = 3
-  tags = ["environment:foo", "host:bar"]
-  keys = ["foo", "bar"]
+resource "datadog_service_check" "foo" {
+    name = "name for service check foo"
+    message           = <<EOF
+{{#is_alert}}Service check foo is critical{/is_alert}}
+{{#is_warning}}Service check foo is at warning level{{/is_warning}}
+{{#is_recovery}}Service check foo has recovered{{/is_recovery}}
+Notify: @hipchat-channel
+EOF
+    check = "datadog.agent.up"
+    check_count = 3
+    tags = ["environment:foo", "host:bar"]
+    keys = ["foo", "bar"]
+    thresholds {
+        ok       = 1 // Optional
+        warning  = 2 // Optional
+        critical = 3 // Required, formally known as "threshold"
+    }
 
-  notify_no_data = false
+    notify_no_data = false
 }
 ```
 
@@ -50,31 +63,33 @@ resource "datadog_service_check" "bar" {
 Example configuration:
 
 ``` HCL
-resource "datadog_metric_alert" "foo" {
-  name = "CPU alert for {{host.name}}"
-  message = "CPU alert failed on {{host.name}} in environment {{host.environment}}"
+resource "datadog_metric_alert" "bar" {
+    name        = "TF: bar"
+    message           = <<EOF
+{{#is_alert}}Metric alert check bar is critical{/is_alert}}
+{{#is_warning}}Metric alert bar is warning{{/is_warning}}
+{{#is_recovery}}Metric alert bar has recovered{{/is_recovery}}
+Notify: @hipchat-channel
+EOF
+    metric      = "datadog.dogstatsd.packet.count"
+    tags        = ["*"]
+    keys        = ["host"]
+    time_aggr   = "avg"
+    time_window = "last_1h"
+    space_aggr  = "sum"
 
-  metric = "aws.ec2.cpu"                 // Metric to monitor
-  tags = ["environment:bar", "host:foo"] // List of tags to monitor
-  keys = ["host"]                        // List of tag keys to alert on, enabling multi-alerts
+    // the `query` parameter can also be used instead of the above parameters
+    // `query = “avg(last_1h):sum:datadog.dogstatsd.packet.count{*} by {host}”`
+    // is equivalent to specifying the above parameters
+    // if `query` is used `metric`, `tags`, `keys`, `time_aggr`, `time_window` and `space_aggr` must not be used
 
-  time_aggr = "avg"                      // avg, sum, max, min, change, or pct_change
-  time_window = "last_1h"                // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
-  space_aggr = "avg"                     // avg, sum, min, or max
-  operator = "<"                         // <, <=, >, >=, ==, or !=
-
-  warning {                              // Creates alert with threshold 80
-    threshold = 80
-    notify = "@hipchat-<name>"
-  }
-
-  critical {                             // Creates alert with threshold 90
-    threshold = 90
-    notify = "@pagerduty"
-  }
-
-  notify_no_data = false                 // Do not alert on no data
-
+    operator    = ">"
+    notify_no_data = 0
+    thresholds {
+        ok       = 1 // Optional
+        warning  = 2 // Optional
+        critical = 3 // Required, formally known as "threshold"
+    }
 }
 ```
 
@@ -85,7 +100,7 @@ Example configuration:
 ``` HCL
 resource "datadog_outlier_alert" "foo" {
   name = "name for outlier_alert foo"
-  message = "description for outlier_alert foo"
+  message = "description for outlier_alert @hipchat-channel"
 
   algorithm = "mad"
 
@@ -97,97 +112,11 @@ resource "datadog_outlier_alert" "foo" {
   time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
   space_aggr = "avg"      // avg, sum, min, or max
 
-  warning {
-    threshold = 3.0         // tolerance
-    notify = "@hipchat-<name>"
-  }
-
-  critical {
-    threshold = 2.0         // tolerance
-    notify = "@pagerduty"
-  }
+  threshold = 3.0         // tolerance
 
   notify_no_data = false
 
 }
-```
-
-### Monitors
-
-Example configuration, _this resource will be renamed to datadog_metric_alert_:
-
-``` HCL
-resource "datadog_monitor" "baz" {
-    name = "baz"
-    message = "Description of monitor baz"
-
-    metric = "aws.ec2.cpu"
-    metric_tags = "*" // one or more comma separated tags (defaults to *)
-
-    time_aggr = "avg" // avg, sum, max, min, change, or pct_change
-    time_window = "last_1h" // last_#m (5, 10, 15, 30), last_#h (1, 2, 4), or last_1d
-    space_aggr = "avg" // avg, sum, min, or max
-    operator = "<" // <, <=, >, >=, ==, or !=
-
-    warning {
-        threshold = 0
-        notify = "@hipchat-<name>"
-    }
-
-    critical {
-        threshold = 0
-        notify = "@pagerduty"
-    }
-
-    notify_no_data = false // Optional, defaults to true
-}
-```
-
-### Dashboards
-
-Example configuration:
-
-``` HCL
-resource "datadog_dashboard" "foo" {
-    description = "description for dashboard foo"
-    title = "title for dashboard foo bar"
-    template_variable {
-       name = "bar"
-       prefix = "host"
-       default = "host:bar.example.com"
-    }
-    template_variable {
-       name = "baz"
-       prefix = "host"
-       default = "host:baz.example.com"
-    }
-}
-```
-### Graphs
-
-Example configuration:
-
-``` HCL
-   resource "datadog_graph" "bar" {
-       title = "Average Memory Free bar"
-       dashboard_id = "${datadog_dashboard.foo.id}"
-       description = "description for graph bar"
-       title = "bar"
-       viz =  "timeseries"
-       request {
-           query =  "avg:system.cpu.system{*}"
-           stacked = false
-       }
-       request {
-           query =  "avg:system.cpu.user{*}"
-           stacked = false
-       }
-       request {
-           query =  "avg:system.mem.user{*}"
-           stacked = false
-       }
-
-   }
 ```
 
 ## Usage
@@ -198,7 +127,7 @@ Tip: export `DATADOG_API_KEY` and `DATADOG_APP_KEY` as environment variables.
 
 ###Plan
 ```sh
-> terraform plan
+ojongerius@hipster  ~/dev/go/datadog  terraform plan
 Refreshing Terraform state prior to plan...
 
 
@@ -211,86 +140,57 @@ will be destroyed.
 Note: You didn't specify an "-out" parameter to save this plan, so when
 "apply" is called, Terraform can't guarantee this is what will execute.
 
-+ datadog_dashboard.foo
-    description: "" => "description for dashboard foo"
-    title:       "" => "title for dashboard foo"
-
-+ datadog_graph.bar
-    dashboard_id:               "" => "0"
-    description:                "" => "description for graph bar"
-    request.#:                  "" => "3"
-    request.1259113621.query:   "" => "avg:system.cpu.system{*}"
-    request.1259113621.stacked: "" => "0"
-    request.3179289285.query:   "" => "avg:system.cpu.user{*}"
-    request.3179289285.stacked: "" => "0"
-    request.458314230.query:    "" => "avg:system.mem.user{*}"
-    request.458314230.stacked:  "" => "0"
-    title:                      "" => "Average Memory Free bar"
-    viz:                        "" => "timeseries"
-
-+ datadog_monitor.baz
-    critical.#:         "0" => "2"
-    critical.notify:    "" => "@pagerduty"
-    critical.threshold: "" => "0"
-    message:            "" => "Description of monitor baz"
-    metric:             "" => "aws.ec2.cpu"
-    metric_tags:        "" => "*"
-    name:               "" => "baz"
-    notify_no_data:     "" => "1"
-    operator:           "" => "<"
-    space_aggr:         "" => "avg"
-    time_aggr:          "" => "avg"
-    time_window:        "" => "last_1h"
-    warning.#:          "0" => "2"
-    warning.notify:     "" => "@hipchat-<name>"
-    warning.threshold:  "" => "0"
++ datadog_metric_alert.statsd_packet_count
+    keys.#:            "0" => "1"
+    keys.0:            "" => "host"
+    message:           "" => "statsd packet count {{host.hostname}}"
+    metric:            "" => "datadog.dogstatsd.packet.count"
+    name:              "" => "TF: stats_packet_count"
+    notify:            "" => "@ojongerius@warning.com"
+    notify_no_data:    "" => "0"
+    operator:          "" => ">"
+    renotify_interval: "" => "0"
+    space_aggr:        "" => "sum"
+    tags.#:            "0" => "1"
+    tags.0:            "" => "*"
+    threshold:         "" => "2"
+    time_aggr:         "" => "avg"
+    time_window:       "" => "last_1h"
 
 
-Plan: 3 to add, 0 to change, 0 to destroy.
+Plan: 1 to add, 0 to change, 0 to destroy.
 ```
 
 ###Apply
 
 ```sh
-> terraform apply
-datadog_dashboard.foo: Creating...
-  description: "" => "description for dashboard foo"
-  title:       "" => "title for dashboard foo"
-datadog_monitor.baz: Creating...
-  critical.#:         "0" => "2"
-  critical.notify:    "" => "@pagerduty"
-  critical.threshold: "" => "0"
-  message:            "" => "Description of monitor baz"
-  metric:             "" => "aws.ec2.cpu"
-  metric_tags:        "" => "*"
-  name:               "" => "baz"
-  notify_no_data:     "" => "1"
-  operator:           "" => "<"
-  space_aggr:         "" => "avg"
-  time_aggr:          "" => "avg"
-  time_window:        "" => "last_1h"
-  warning.#:          "0" => "2"
-  warning.notify:     "" => "@hipchat-<name>"
-  warning.threshold:  "" => "0"
-datadog_monitor.baz: Creation complete
-datadog_dashboard.foo: Creation complete
-datadog_graph.bar: Creating...
-  dashboard_id:               "" => "61249"
-  description:                "" => "description for graph bar"
-  request.#:                  "" => "3"
-  request.1259113621.query:   "" => "avg:system.cpu.system{*}"
-  request.1259113621.stacked: "" => "0"
-  request.3179289285.query:   "" => "avg:system.cpu.user{*}"
-  request.3179289285.stacked: "" => "0"
-  request.458314230.query:    "" => "avg:system.mem.user{*}"
-  request.458314230.stacked:  "" => "0"
-  title:                      "" => "Average Memory Free bar"
-  viz:                        "" => "timeseries"
-datadog_graph.bar: Creation complete
+ojongerius@hipster  ~/dev/go/datadog  terraform apply
+datadog_metric_alert.statsd_packet_count: Creating...
+  keys.#:            "0" => "1"
+  keys.0:            "" => "host"
+  message:           "" => "statsd packet count {{host.hostname}}"
+  metric:            "" => "datadog.dogstatsd.packet.count"
+  name:              "" => "TF: stats_packet_count"
+  notify:            "" => "@ojongerius@warning.com"
+  notify_no_data:    "" => "0"
+  operator:          "" => ">"
+  renotify_interval: "" => "0"
+  space_aggr:        "" => "sum"
+  tags.#:            "0" => "1"
+  tags.0:            "" => "*"
+  threshold:         "" => "2"
+  time_aggr:         "" => "avg"
+  time_window:       "" => "last_1h"
+datadog_metric_alert.statsd_packet_count: Creation complete
 
+Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
+The state of your infrastructure has been saved to the path
+below. This state is required to modify and destroy your
+infrastructure, so keep it safe. To inspect the complete state
+use the `terraform show` command.
 
-Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+State path: terraform.tfstate
 ```
 
 ## Development
@@ -309,12 +209,27 @@ go tool vet -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc
 
 #### Acceptance tests
 
-Much more extensive but need a valide Datadog API and APP key.
+Much more extensive but need a valid Datadog API and APP key.
 
-These tests will create and destroy real resources.
+These tests will both create and destroy real resources.
 
 ```sh
-make testacc
+ojongerius@hipster  ~/gocode/src/github.com/ojongerius/terraform-provider-datadog   KISS ●  make
+testacc
+go generate ./...
+TF_ACC=1 go test ./datadog -v  -timeout 90m
+=== RUN   TestProvider
+--- PASS: TestProvider (0.00s)
+=== RUN   TestProvider_impl
+--- PASS: TestProvider_impl (0.00s)
+=== RUN   TestAccDatadogMetricAlert_Basic
+--- PASS: TestAccDatadogMetricAlert_Basic (3.65s)
+=== RUN   TestAccDatadogOutlierAlert_Basic
+--- PASS: TestAccDatadogOutlierAlert_Basic (2.46s)
+=== RUN   TestAccDatadogServiceCheck_Basic
+--- PASS: TestAccDatadogServiceCheck_Basic (2.49s)
+PASS
+ok      github.com/ojongerius/terraform-provider-datadog/datadog        8.614s
 ```
 
 ### Building
