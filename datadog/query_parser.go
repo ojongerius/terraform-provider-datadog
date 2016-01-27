@@ -1,7 +1,6 @@
 package datadog
 
 import (
-	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
 	"log"
@@ -11,6 +10,19 @@ import (
 )
 
 /*
+    TODO: summary: consider getting rid of this whole thing and just be heaps closer to the API.
+
+    OR: as we now just have one monitor per resource, and no longer have
+        to parse notify from message, we *could* support constructing the
+        query as a convenience. Maybe we *should* have a parser per
+        resource, it would make the regexps less hideous and painful.
+
+    In the latter case:
+     * *maybe* have a type, but *only* for the query.
+     * how could we make it a little robust? could do
+       more "producer / consumer" and have a little parser that can
+       throw and error, or can check if it has collected what it should..
+
 	Example of simple query:
 	"min(last_15m):avg:stats.aws.vpc_prod_monitoring.ami.count{service_name:gnomes,aws-account-alias:vpc-production} > 3500"
 
@@ -22,22 +34,31 @@ import (
 */
 
 type subDatadogMonitor struct {
-	Name             string
-	Message          string
-	Notify           string // how would we store this? .Set(fmt.Sprintf("%s.notify", level), v)
-	TimeAggregate    string // check if not int
-	TimeWindow       string
-	SpaceAggregate   string
-	Metric           string
-	Tags             []interface{}
-	Keys             []interface{}
-	Operator         string
-	Threshold        string // correct type? this should be stored as for example warning.threshold 5
-	Algorithm        string
-	Check            string
+	// All
+	Name    string
+	Message string
+	// end all
+	// These could all be replaced with query
+	TimeAggregate  string // check if not int
+	TimeWindow     string
+	SpaceAggregate string
+	Metric         string
+	Tags           []interface{}
+	Keys           []interface{}
+	Operator       string
+	Threshold      string // correct type? this should be stored as for example warning.threshold 5
+	// end of what could be replace if we only supported query
+	// Outlier
+	Algorithm string
+	// end Outlier
+	// Service Check
+	Check string
+	// end check
+	// All
 	ReNotifyInterval string // check Type
 	NotifyNoData     bool
 	NoDataTimeFrame  int
+	// end all
 }
 
 const (
@@ -58,52 +79,80 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) (sub
 
 	monitor := subDatadogMonitor{}
 	// Name
-	re := regexp.MustCompile(`\[([a-zA-Z]+)\]\s(.+)`)
-	// Find check name
-	r := re.FindStringSubmatch(m.Name)
-	if r == nil {
-		return monitor, fmt.Errorf("Name parser error: string match returned nil")
-	}
-	if len(r) < 3 {
-		return monitor, fmt.Errorf("Name parser error. Expected: 3. Got: %d", len(r))
-	}
-	level := r[1] // Store this so we can save the contact for in the right place (see below)
-	log.Printf("[DEBUG] found level %s", level)
-	log.Printf("[DEBUG] found name %s", r[2])
-
-	if r[2] != d.Get("name") {
-		log.Printf("[DEBUG] XX name was: %s found: %s", d.Get("name"), r[2])
-		monitor.Name = r[2]
+	if m.Name != d.Get("name") {
+		log.Printf("[DEBUG] XX name was: %s found: %s", d.Get("name"), m.Name)
+		monitor.Name = m.Name
 	}
 
 	// Message
-	res := strings.Split(m.Message, " @")
-	if res == nil {
-		return monitor, fmt.Errorf("Message parser error: string split returned nil")
+	if m.Message != d.Get("message") {
+		log.Printf("[DEBUG] XX message was: %s found: %s", d.Get("name"), m.Message)
+		monitor.Message = m.Message
 	}
 
-	log.Printf("[DEBUG] found message %s", res[0])
-	if res[0] != d.Get("message") {
-		log.Printf("[DEBUG] XX message was: %s found: %s", d.Get("name"), res[0])
-		monitor.Message = res[0]
+	log.Printf("[DEBUG] storing notify_no_data: %v", m.Options.NotifyNoData)
+	if m.Options.NotifyNoData != d.Get("notify_no_data") {
+		log.Printf("[DEBUG] XX notify_no_data was: %t found: %t", d.Get("notify_no_data"), m.Options.NotifyNoData)
+		monitor.NotifyNoData = m.Options.NotifyNoData
 	}
 
-	levelMap := d.Get(level).(map[string]interface{})
-
-	for k, v := range res {
-		if k == 0 {
-			// The message is the first element, move on to the contact
-			// TODO: handle cases where at-mentions are embedded/nested *in* the messages.
-			continue
-		}
-		log.Printf("[DEBUG] found %s.notify: %s", level, levelMap["notify"])
-		// TODO: this will
-		if fmt.Sprintf("@%s", v) != levelMap["notify"] {
-			log.Printf("[DEBUG] XX %s.notify was: %s found: %s", level, levelMap["notify"], v)
-			monitor.Notify = v
-		}
+	log.Printf("[DEBUG] storing nodata_time_frame: %v", m.Options.NoDataTimeframe)
+	if m.Options.NoDataTimeframe != d.Get("no_data_timeframe") {
+		log.Printf("[DEBUG] XX fy_no_data_timeframe was: %d found: %d", d.Get("no_data_timeframe"), m.Options.NoDataTimeframe)
+		monitor.NoDataTimeFrame = m.Options.NoDataTimeframe
 	}
 
+	// TODO: decide which regexp testing m.Type, like this, or pull it
+	// from a map
+	if m.Type == "query alert" {
+		log.Printf("[DEBUG] handling outlier (query) alert")
+		/*
+			See options for metric alert, with some added undocumented
+				outlier options
+		*/
+	} else if m.Type == "metric alert" {
+		log.Printf("[DEBUG] handling metric alert")
+		/*
+			time_aggr(time_window):space_aggr:metric{tags} [by {key}] operator #
+			time_aggr avg, sum, max, min, change, or pct_change
+			time_window last_#m (5, 10, 15, or 30), last_#h (1, 2, or 4), or last_1d
+			space_aggr avg, sum, min, or max
+			tags one or more tags (comma-separated), or *
+			key a 'key' in key:value tag syntax; defines a separate alert for each tag in the group (multi-alert)
+			operator <, <=, >, >=, ==, or !=
+			# an integer or decimal number used to set the threshold
+			If you are using the change or pct_change time aggregator, you can instead use change_aggr(time_aggr(time_window), timeshift):space_aggr:metric{tags} [by {key}] operator # with:
+			change_aggr change, pct_change
+			time_aggr avg, sum, max, min
+			time_window last_#m (1, 5, 10, 15, or 30), last_#h (1, 2, or 4), or last_#d (1 or 2)
+			timeshift #m_ago (5, 10, 15, or 30), #h_ago (1, 2, or 4), or 1d_ago
+		*/
+	} else if m.Type == "event alert" {
+		log.Printf("[DEBUG] handling event alert")
+		/*
+			events('sources:nagios status:error,warning priority:normal tags: "string query"').rollup("count").last("1h")"
+				event, the event query string:
+					string_query free text query to match against event title and text.
+				sources event sources (comma-separated).
+				status event statuses (comma-separated). Valid options: error, warn, and info.
+				priority event priorities (comma-separated). Valid options: low, normal, all.
+				host event reporting host (comma-separated).
+				tags event tags (comma-separated).
+				excluded_tags exluded event tags (comma-separated).
+				rollup the stats rollup method. count is the only supported method now.
+				last the timeframe to roll up the counts. Examples: 60s, 4h. Supported timeframes: s, m, h and d.
+		*/
+	} else if m.Type == "service check" {
+		log.Printf("[DEBUG] handling service check")
+		/*
+			"check".over(tags).last(count).count_by_status()
+				check name of the check, e.g. datadog.agent.up
+				tags one or more quoted tags (comma-separated), or "*". e.g.: .over("env:prod", "role:db")
+				count must be at >= your max threshold (defined in the options). e.g. if you want to notify on 1 critical, 3 ok and 2 warn statuses count should be 3.
+		*/
+	}
+
+	re := regexp.MustCompile("") // TODO unfuck me
 	// If it is an outlier, use separate regular expression. Outliers can only be grouped, and hence alway are multi alerts.
 	if strings.Contains(m.Query, "outliers") {
 		log.Print("[DEBUG] is Outlier alert")
@@ -210,6 +259,7 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) (sub
 							monitor.Operator = n
 						}
 					}
+
 				// TODO: this is different for resources that have
 				//       warn/crit monitors (metric alerts) and others
 				case n1[i] == "threshold": // Shared
@@ -243,17 +293,6 @@ func resourceDatadogQueryParser(d *schema.ResourceData, m *datadog.Monitor) (sub
 				}
 			}
 		}
-	}
-	log.Printf("[DEBUG] storing notify_no_data: %v", m.Options.NotifyNoData)
-	if m.Options.NotifyNoData != d.Get("notify_no_data") {
-		log.Printf("[DEBUG] XX notify_no_data was: %t found: %t", d.Get("notify_no_data"), m.Options.NotifyNoData)
-		monitor.NotifyNoData = m.Options.NotifyNoData
-	}
-
-	log.Printf("[DEBUG] storing nodata_time_frame: %v", m.Options.NoDataTimeframe)
-	if m.Options.NoDataTimeframe != d.Get("no_data_timeframe") {
-		log.Printf("[DEBUG] XX fy_no_data_timeframe was: %d found: %d", d.Get("no_data_timeframe"), m.Options.NoDataTimeframe)
-		monitor.NoDataTimeFrame = m.Options.NoDataTimeframe
 	}
 
 	return monitor, nil

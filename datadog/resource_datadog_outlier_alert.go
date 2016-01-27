@@ -19,19 +19,18 @@ func resourceDatadogOutlierAlert() *schema.Resource {
 		Exists: resourceDatadogGenericExists,
 
 		Schema: map[string]*schema.Schema{
-			"name": &schema.Schema{
+			// Specific, many shared with metric alert
+			"algorithm": &schema.Schema{
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				Default:  "dbscan",
 			},
+
 			"metric": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"tags": &schema.Schema{
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
+
 			"keys": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -49,6 +48,32 @@ func resourceDatadogOutlierAlert() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			/*
+				            time_aggr(time_window):space_aggr:metric{tags} [by {key}] operator #
+							time_aggr avg, sum, max, min, change, or pct_change
+							time_window last_#m (5, 10, 15, or 30), last_#h (1, 2, or 4), or last_1d
+							space_aggr avg, sum, min, or max
+							tags one or more tags (comma-separated), or *
+							key a 'key' in key:value tag syntax; defines a separate alert for each tag in the group (multi-alert)
+							operator <, <=, >, >=, ==, or !=
+							# an integer or decimal number used to set the threshold
+							If you are using the change or pct_change time aggregator, you can instead use change_aggr(time_aggr(time_window), timeshift):space_aggr:metric{tags} [by {key}] operator # with:
+							change_aggr change, pct_change
+							time_aggr avg, sum, max, min
+							time_window last_#m (1, 5, 10, 15, or 30), last_#h (1, 2, or 4), or last_#d (1 or 2)
+							timeshift #m_ago (5, 10, 15, or 30), #h_ago (1, 2, or 4), or 1d_ago
+			*/
+
+			// Common
+			"name": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"tags": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
 			"message": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -57,24 +82,15 @@ func resourceDatadogOutlierAlert() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			// Additional Settings
 			"notify_no_data": &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
 			},
-
 			"no_data_timeframe": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-
-			"algorithm": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "dbscan",
-			},
-
 			"renotify_interval": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
