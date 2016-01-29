@@ -37,10 +37,9 @@ func resourceDatadogMonitor() *schema.Resource {
 				Required: true,
 			},
 
-			// TODO figure out how to merge this
 			"thresholds": thresholdSchema(),
 
-			// Additional Settings
+			// Options
 			"notify_no_data": &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -57,67 +56,58 @@ func resourceDatadogMonitor() *schema.Resource {
 				Optional: true,
 				Default:  0,
 			},
-			// TODO: add all the other options that are possible
-			// TODO: can make some options exclusive, see last merge to master
+
+			"notify_audit": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+			"period": &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  false,
+			},
 			/*
-				tags [optional, default=empty list]
-				A list of tags to associate with your monitor. This can help you categorize and filter monitors.
-				options [optional]
-				A dictionary of options for the monitor. There are options that are common to all types as well as options that are specific to certain monitor types.
-				COMMON OPTIONS
+				TODO: implement this
+				Silenced          map[string]int `json:"silenced,omitempty"`
+				"silenced": &schema.Schema{
+					Type:     schema.TypeInt,
+					Optional: true,
+					Default:  false,
+				},
+			*/
+			"timeout_h": &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"escalation_message": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 
-				silenced dictionary of scopes to timestamps or None. Each scope will be muted until the given POSIX timestamp or forever if the value is None.
-				Default: None
+			/*
+							TODO: implement these
 
-				Examples:
+								tags [optional, default=empty list]
+								A list of tags to associate with your monitor. This can help you categorize and filter monitors.
+								options [optional]
+								A dictionary of options for the monitor. There are options that are common to all types as well as options that are specific to certain monitor types.
+								COMMON OPTIONS
 
-				To mute the alert completely:
-				{'*': None}
+								silenced dictionary of scopes to timestamps or None. Each scope will be muted until the given POSIX timestamp or forever if the value is None.
+								Default: None
 
-				To mute role:db for a short time:
-				{'role:db': 1412798116}
+								Examples:
 
-				notify_no_data a boolean indicating whether this monitor will notify when data stops reporting.
-				Default: false
+								To mute the alert completely:
+								{'*': None}
 
-				no_data_timeframe the number of minutes before a monitor will notify when data stops reporting. Must be at least 2x the monitor timeframe for metric alerts or 2 minutes for service checks.
-				Default: 2x timeframe for metric alerts, 2 minutes for service checks
+								To mute role:db for a short time:
+								{'role:db': 1412798116}
 
-				timeout_h the number of hours of the monitor not reporting data before it will automatically resolve from a triggered state.
-				Default: None
-
-				renotify_interval the number of minutes after the last notification before a monitor will re-notify on the current status. It will only re-notify if it's not resolved.
-				Default: None
-
-				escalation_message a message to include with a re-notification. Supports the '@username' notification we allow elsewhere. Not applicable if renotify_interval is None.
-				Default: None
-
-				notify_audit a boolean indicating whether tagged users will be notified on changes to this monitor.
-				Default: False
-
-				include_tags a boolean indicating whether notifications from this monitor will automatically insert its triggering tags into the title.
-				Default: True
-
-				Examples:
-
-				True:
-				[Triggered on {host:h1}] Monitor Title
-
-				False:
-				[Triggered] Monitor Title
-
-				METRIC ALERT OPTIONS
-
-				These options only apply to metric alerts.
-				thresholds a dictionary of thresholds by threshold type. Currently we have two threshold types for metric alerts: critical and warning. Critical is defined in the query, but can also be specified in this option. Warning threshold can only be specified using the thresholds option.
-				Example: {'critical': 90, 'warning': 80}
-
-				SERVICE CHECK OPTIONS
-
-				These options only apply to service checks and will be ignored for other monitor types.
-				thresholds a dictionary of thresholds by status. Because service checks can have multiple thresholds, we don't define them directly in the query.
-				Default: {'ok': 1, 'critical': 1, 'warning': 1}
-
+				                TODO: needs upstream change
+								include_tags a boolean indicating whether notifications from this monitor will automatically insert its triggering tags into the title.
+								Default: True
 			*/
 		},
 	}
@@ -128,11 +118,18 @@ func buildMonitorStruct(d *schema.ResourceData) *datadog.Monitor {
 
 	_, thresholds := getThresholds(d)
 
+	// Not all of above options are mandatory, consider doing GetOk for all these,
+	// unless they have defaults or are mandatory
+
 	o := datadog.Options{
-		NotifyNoData:     d.Get("notify_no_data").(bool),
-		NoDataTimeframe:  d.Get("no_data_timeframe").(int),
-		RenotifyInterval: d.Get("renotify_interval").(int),
-		Thresholds:       thresholds,
+		NotifyNoData:      d.Get("notify_no_data").(bool),
+		NoDataTimeframe:   d.Get("no_data_timeframe").(int),
+		RenotifyInterval:  d.Get("renotify_interval").(int),
+		Thresholds:        thresholds,
+		NotifyAudit:       d.Get("notify_audit").(bool),
+		Period:            d.Get("period").(int),
+		TimeoutH:          d.Get("timeout_h").(int),
+		EscalationMessage: d.Get("escalation_message").(string),
 	}
 
 	m := datadog.Monitor{
@@ -181,10 +178,14 @@ func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error 
 	d.Set("message", m.Message)
 	d.Set("query", m.Query)
 	d.Set("type", m.Type)
-	d.Set("thresholds", m.Options.Thresholds) // would this work?
+	d.Set("thresholds", m.Options.Thresholds)
 	d.Set("notify_no_data", m.Options.NotifyNoData)
 	d.Set("notify_no_data_timeframe", m.Options.NoDataTimeframe)
 	d.Set("renotify_interval", m.Options.RenotifyInterval)
+	d.Set("notify_audit", m.Options.NotifyAudit)
+	d.Set("period", m.Options.Period)
+	d.Set("timeout_h", m.Options.TimeoutH)
+	d.Set("escalation_message", m.Options.EscalationMessage)
 
 	return nil
 }
@@ -236,6 +237,18 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 	}
 	if attr, ok := d.GetOk("renotify_interval"); ok {
 		o.RenotifyInterval = attr.(int)
+	}
+	if attr, ok := d.GetOk("notify_audit"); ok {
+		o.NotifyAudit = attr.(bool)
+	}
+	if attr, ok := d.GetOk("period"); ok {
+		o.Period = attr.(int)
+	}
+	if attr, ok := d.GetOk("timeout_h"); ok {
+		o.TimeoutH = attr.(int)
+	}
+	if attr, ok := d.GetOk("escalation_message"); ok {
+		o.EscalationMessage = attr.(string)
 	}
 
 	m.Options = o
