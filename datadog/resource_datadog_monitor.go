@@ -28,6 +28,10 @@ func resourceDatadogMonitor() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"escalation_message": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"query": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -60,22 +64,20 @@ func resourceDatadogMonitor() *schema.Resource {
 			"notify_audit": &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
-				Default:  false,
 			},
-			/*
-				"silenced": &schema.Schema{
-					Type:     schema.TypeMap, // TODO is there a way to validate this?
-					Optional: true,
-					Elem:     &schema.Schema{Type: schema.TypeInt},
-				},
-			*/
 			"timeout_h": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-			"escalation_message": &schema.Schema{
-				Type:     schema.TypeString,
+			// TODO should actually be map[string]int
+			"silenced": &schema.Schema{
+				Type:     schema.TypeMap,
 				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+					Elem: &schema.Schema{
+						Type: schema.TypeInt},
+				},
 			},
 			"include_tags": &schema.Schema{
 				Type:     schema.TypeBool,
@@ -93,12 +95,14 @@ func buildMonitorStruct(d *schema.ResourceData) *datadog.Monitor {
 	o := datadog.Options{
 		Thresholds: thresholds,
 	}
-	/*
-		if attr, ok := d.GetOk("silenced"); ok {
-			// TODO: have to handle this like did for tags
-			o.Silenced = attr.(map[string]int)
+	if attr, ok := d.GetOk("silenced"); ok {
+		s := make(map[string]int)
+		// TODO: this is not very defensive, test if we can fail non int input
+		for k, v := range attr.(map[string]interface{}) {
+			s[k], _ = strconv.Atoi(v.(string))
 		}
-	*/
+		o.Silenced = s
+	}
 	if attr, ok := d.GetOk("notify_data"); ok {
 		o.NotifyNoData = attr.(bool)
 	}
@@ -182,7 +186,7 @@ func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error 
 	d.Set("notify_audit", m.Options.NotifyAudit)
 	d.Set("timeout_h", m.Options.TimeoutH)
 	d.Set("escalation_message", m.Options.EscalationMessage)
-	// d.Set("silenced", m.Options.Silenced)
+	d.Set("silenced", m.Options.Silenced)
 	d.Set("include_tags", m.Options.IncludeTags)
 
 	return nil
@@ -248,11 +252,14 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 	if attr, ok := d.GetOk("escalation_message"); ok {
 		o.EscalationMessage = attr.(string)
 	}
-	/*
-		if attr, ok := d.GetOk("silenced"); ok {
-			o.Silenced = attr.(map[string]int)
+	if attr, ok := d.GetOk("silenced"); ok {
+		// TODO: this is not very defensive, test if we can fail non int input
+		s := make(map[string]int)
+		for k, v := range attr.(map[string]interface{}) {
+			s[k], _ = strconv.Atoi(v.(string))
 		}
-	*/
+		o.Silenced = s
+	}
 	if attr, ok := d.GetOk("include_tags"); ok {
 		o.IncludeTags = attr.(bool)
 	}

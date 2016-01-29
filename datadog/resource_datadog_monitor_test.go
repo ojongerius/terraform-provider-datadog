@@ -110,6 +110,8 @@ func TestAccDatadogMonitor_Updated(t *testing.T) {
 						"datadog_monitor.foo", "timeout_h", "70"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "include_tags", "false"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "silenced.*", "0"),
 				),
 			},
 		},
@@ -180,9 +182,8 @@ resource "datadog_monitor" "foo" {
   notify_audit = true
   timeout_h = 70
   include_tags = false
-  // TODO: add test
-  //silenced {
-  //	"role:db" = 1412798116
-  //}
+  silenced {
+	"*" = 0
+  }
 }
 `
