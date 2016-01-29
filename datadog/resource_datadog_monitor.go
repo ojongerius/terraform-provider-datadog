@@ -36,44 +36,37 @@ func resourceDatadogMonitor() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-
-			"thresholds": thresholdSchema(),
+			"tags": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
 
 			// Options
+			"thresholds": thresholdSchema(),
 			"notify_no_data": &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
 			},
-
 			"no_data_timeframe": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-
 			"renotify_interval": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  0,
 			},
-
 			"notify_audit": &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
 			},
-			"period": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  false,
-			},
 			/*
-				TODO: implement this
-				Silenced          map[string]int `json:"silenced,omitempty"`
 				"silenced": &schema.Schema{
-					Type:     schema.TypeInt,
+					Type:     schema.TypeMap, // TODO is there a way to validate this?
 					Optional: true,
-					Default:  false,
+					Elem:     &schema.Schema{Type: schema.TypeInt},
 				},
 			*/
 			"timeout_h": &schema.Schema{
@@ -84,31 +77,10 @@ func resourceDatadogMonitor() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-
-			/*
-							TODO: implement these
-
-								tags [optional, default=empty list]
-								A list of tags to associate with your monitor. This can help you categorize and filter monitors.
-								options [optional]
-								A dictionary of options for the monitor. There are options that are common to all types as well as options that are specific to certain monitor types.
-								COMMON OPTIONS
-
-								silenced dictionary of scopes to timestamps or None. Each scope will be muted until the given POSIX timestamp or forever if the value is None.
-								Default: None
-
-								Examples:
-
-								To mute the alert completely:
-								{'*': None}
-
-								To mute role:db for a short time:
-								{'role:db': 1412798116}
-
-				                TODO: needs upstream change
-								include_tags a boolean indicating whether notifications from this monitor will automatically insert its triggering tags into the title.
-								Default: True
-			*/
+			"include_tags": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -118,18 +90,38 @@ func buildMonitorStruct(d *schema.ResourceData) *datadog.Monitor {
 
 	_, thresholds := getThresholds(d)
 
-	// Not all of above options are mandatory, consider doing GetOk for all these,
-	// unless they have defaults or are mandatory
-
 	o := datadog.Options{
-		NotifyNoData:      d.Get("notify_no_data").(bool),
-		NoDataTimeframe:   d.Get("no_data_timeframe").(int),
-		RenotifyInterval:  d.Get("renotify_interval").(int),
-		Thresholds:        thresholds,
-		NotifyAudit:       d.Get("notify_audit").(bool),
-		Period:            d.Get("period").(int),
-		TimeoutH:          d.Get("timeout_h").(int),
-		EscalationMessage: d.Get("escalation_message").(string),
+		Thresholds: thresholds,
+	}
+	/*
+		if attr, ok := d.GetOk("silenced"); ok {
+			// TODO: have to handle this like did for tags
+			o.Silenced = attr.(map[string]int)
+		}
+	*/
+	if attr, ok := d.GetOk("notify_data"); ok {
+		o.NotifyNoData = attr.(bool)
+	}
+	if attr, ok := d.GetOk("no_data_timeframe"); ok {
+		o.NoDataTimeframe = attr.(int)
+	}
+	if attr, ok := d.GetOk("renotify_interval"); ok {
+		o.RenotifyInterval = attr.(int)
+	}
+	if attr, ok := d.GetOk("notify_audit"); ok {
+		o.NotifyAudit = attr.(bool)
+	}
+	if attr, ok := d.GetOk("timeout_h"); ok {
+		o.TimeoutH = attr.(int)
+	}
+	if attr, ok := d.GetOk("escalation_message"); ok {
+		o.EscalationMessage = attr.(string)
+	}
+	if attr, ok := d.GetOk("escalation_message"); ok {
+		o.EscalationMessage = attr.(string)
+	}
+	if attr, ok := d.GetOk("include_tags"); ok {
+		o.IncludeTags = attr.(bool)
 	}
 
 	m := datadog.Monitor{
@@ -138,6 +130,10 @@ func buildMonitorStruct(d *schema.ResourceData) *datadog.Monitor {
 		Name:    d.Get("name").(string),
 		Message: d.Get("message").(string),
 		Options: o,
+	}
+
+	if attr, ok := d.GetOk("tags"); ok {
+		m.Tags = attr.([]string)
 	}
 
 	return &m
@@ -178,14 +174,16 @@ func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error 
 	d.Set("message", m.Message)
 	d.Set("query", m.Query)
 	d.Set("type", m.Type)
+	d.Set("tags", m.Tags)
 	d.Set("thresholds", m.Options.Thresholds)
 	d.Set("notify_no_data", m.Options.NotifyNoData)
 	d.Set("notify_no_data_timeframe", m.Options.NoDataTimeframe)
 	d.Set("renotify_interval", m.Options.RenotifyInterval)
 	d.Set("notify_audit", m.Options.NotifyAudit)
-	d.Set("period", m.Options.Period)
 	d.Set("timeout_h", m.Options.TimeoutH)
 	d.Set("escalation_message", m.Options.EscalationMessage)
+	// d.Set("silenced", m.Options.Silenced)
+	d.Set("include_tags", m.Options.IncludeTags)
 
 	return nil
 }
@@ -212,6 +210,9 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 	}
 	if attr, ok := d.GetOk("query"); ok {
 		m.Query = attr.(string)
+	}
+	if attr, ok := d.GetOk("tags"); ok {
+		m.Tags = attr.([]string)
 	}
 
 	o := datadog.Options{}
@@ -241,14 +242,19 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 	if attr, ok := d.GetOk("notify_audit"); ok {
 		o.NotifyAudit = attr.(bool)
 	}
-	if attr, ok := d.GetOk("period"); ok {
-		o.Period = attr.(int)
-	}
 	if attr, ok := d.GetOk("timeout_h"); ok {
 		o.TimeoutH = attr.(int)
 	}
 	if attr, ok := d.GetOk("escalation_message"); ok {
 		o.EscalationMessage = attr.(string)
+	}
+	/*
+		if attr, ok := d.GetOk("silenced"); ok {
+			o.Silenced = attr.(map[string]int)
+		}
+	*/
+	if attr, ok := d.GetOk("include_tags"); ok {
+		o.IncludeTags = attr.(bool)
 	}
 
 	m.Options = o

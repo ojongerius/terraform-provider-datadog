@@ -23,6 +23,8 @@ func TestAccDatadogMonitor_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "message", "some message Notify: @hipchat-channel"),
 					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "type", "metric alert"),
+					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "query", "avg(last_1h):avg:aws.ec2.cpu{environment:foo,host:foo} by {host} > 2"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "notify_no_data", "false"),
@@ -55,7 +57,11 @@ func TestAccDatadogMonitor_Updated(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "message", "some message Notify: @hipchat-channel"),
 					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "escalation_message", "the situation has escalated @pagerduty"),
+					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "query", "avg(last_1h):avg:aws.ec2.cpu{environment:foo,host:foo} by {host} > 2"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "type", "metric alert"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "notify_no_data", "false"),
 					resource.TestCheckResourceAttr(
@@ -66,6 +72,12 @@ func TestAccDatadogMonitor_Updated(t *testing.T) {
 						"datadog_monitor.foo", "thresholds.warning", "1"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "thresholds.critical", "2"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "notify_audit", "false"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "timeout_h", "60"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "include_tags", "true"),
 				),
 			},
 			resource.TestStep{
@@ -79,6 +91,10 @@ func TestAccDatadogMonitor_Updated(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "query", "avg(last_1h):avg:aws.ec2.cpu{environment:bar,host:bar} by {host} > 3"),
 					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "escalation_message", "the situation has escalated! @pagerduty"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "type", "metric alert"),
+					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "notify_no_data", "true"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "renotify_interval", "40"),
@@ -88,6 +104,12 @@ func TestAccDatadogMonitor_Updated(t *testing.T) {
 						"datadog_monitor.foo", "thresholds.warning", "1"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "thresholds.critical", "3"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "notify_audit", "true"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "timeout_h", "70"),
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "include_tags", "false"),
 				),
 			},
 		},
@@ -118,6 +140,7 @@ resource "datadog_monitor" "foo" {
   name = "name for monitor foo"
   type = "metric alert"
   message = "some message Notify: @hipchat-channel"
+  escalation_message = "the situation has escalated @pagerduty"
 
   query = "avg(last_1h):avg:aws.ec2.cpu{environment:foo,host:foo} by {host} > 2"
 
@@ -129,6 +152,10 @@ resource "datadog_monitor" "foo" {
 
   notify_no_data = false
   renotify_interval = 60
+
+  notify_audit = false
+  timeout_h = 60
+  include_tags = true
 }
 `
 
@@ -137,6 +164,7 @@ resource "datadog_monitor" "foo" {
   name = "name for monitor bar"
   type = "metric alert"
   message = "a different message Notify: @hipchat-channel"
+  escalation_message = "the situation has escalated @pagerduty"
 
   query = "avg(last_1h):avg:aws.ec2.cpu{environment:bar,host:bar} by {host} > 3"
 
@@ -148,5 +176,13 @@ resource "datadog_monitor" "foo" {
 
   notify_no_data = true
   renotify_interval = 40
+  escalation_message = "the situation has escalated! @pagerduty"
+  notify_audit = true
+  timeout_h = 70
+  include_tags = false
+  // TODO: add test
+  //silenced {
+  //	"role:db" = 1412798116
+  //}
 }
 `
