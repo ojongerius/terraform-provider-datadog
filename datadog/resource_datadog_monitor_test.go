@@ -157,7 +157,7 @@ resource "datadog_monitor" "foo" {
 
   notify_audit = false
   timeout_h = 60
-  include_tags = true
+  //include_tags = true
 }
 `
 
@@ -181,7 +181,8 @@ resource "datadog_monitor" "foo" {
   escalation_message = "the situation has escalated! @pagerduty"
   notify_audit = true
   timeout_h = 70
-  include_tags = false
+  //include_tags = false
+  // TODO add tags test
   silenced {
 	"*" = 0
   }

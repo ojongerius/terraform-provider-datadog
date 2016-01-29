@@ -40,11 +40,13 @@ func resourceDatadogMonitor() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"tags": &schema.Schema{
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
+			/*
+				"tags": &schema.Schema{
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			*/
 
 			// Options
 			"thresholds": thresholdSchema(),
@@ -79,10 +81,12 @@ func resourceDatadogMonitor() *schema.Resource {
 						Type: schema.TypeInt},
 				},
 			},
-			"include_tags": &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
+			/*
+				"include_tags": &schema.Schema{
+					Type:     schema.TypeBool,
+					Optional: true,
+				},
+			*/
 		},
 	}
 }
@@ -124,9 +128,11 @@ func buildMonitorStruct(d *schema.ResourceData) *datadog.Monitor {
 	if attr, ok := d.GetOk("escalation_message"); ok {
 		o.EscalationMessage = attr.(string)
 	}
-	if attr, ok := d.GetOk("include_tags"); ok {
-		o.IncludeTags = attr.(bool)
-	}
+	/*
+		if attr, ok := d.GetOk("include_tags"); ok {
+			o.IncludeTags = attr.(bool)
+		}
+	*/
 
 	m := datadog.Monitor{
 		Type:    d.Get("type").(string),
@@ -136,9 +142,11 @@ func buildMonitorStruct(d *schema.ResourceData) *datadog.Monitor {
 		Options: o,
 	}
 
-	if attr, ok := d.GetOk("tags"); ok {
-		m.Tags = attr.([]string)
-	}
+	/*
+		if attr, ok := d.GetOk("tags"); ok {
+			m.Tags = attr.([]string)
+		}
+	*/
 
 	return &m
 }
@@ -178,7 +186,9 @@ func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error 
 	d.Set("message", m.Message)
 	d.Set("query", m.Query)
 	d.Set("type", m.Type)
-	d.Set("tags", m.Tags)
+	/*
+		d.Set("tags", m.Tags)
+	*/
 	d.Set("thresholds", m.Options.Thresholds)
 	d.Set("notify_no_data", m.Options.NotifyNoData)
 	d.Set("notify_no_data_timeframe", m.Options.NoDataTimeframe)
@@ -187,7 +197,9 @@ func resourceDatadogMonitorRead(d *schema.ResourceData, meta interface{}) error 
 	d.Set("timeout_h", m.Options.TimeoutH)
 	d.Set("escalation_message", m.Options.EscalationMessage)
 	d.Set("silenced", m.Options.Silenced)
-	d.Set("include_tags", m.Options.IncludeTags)
+	/*
+		d.Set("include_tags", m.Options.IncludeTags)
+	*/
 
 	return nil
 }
@@ -215,9 +227,11 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 	if attr, ok := d.GetOk("query"); ok {
 		m.Query = attr.(string)
 	}
-	if attr, ok := d.GetOk("tags"); ok {
-		m.Tags = attr.([]string)
-	}
+	/*
+		if attr, ok := d.GetOk("tags"); ok {
+			m.Tags = attr.([]string)
+		}
+	*/
 
 	o := datadog.Options{}
 
@@ -260,9 +274,11 @@ func resourceDatadogMonitorUpdate(d *schema.ResourceData, meta interface{}) erro
 		}
 		o.Silenced = s
 	}
-	if attr, ok := d.GetOk("include_tags"); ok {
-		o.IncludeTags = attr.(bool)
-	}
+	/*
+		if attr, ok := d.GetOk("include_tags"); ok {
+			o.IncludeTags = attr.(bool)
+		}
+	*/
 
 	m.Options = o
 
