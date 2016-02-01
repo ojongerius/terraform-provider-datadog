@@ -1,3 +1,7 @@
+## 0.0.6 (unreleased)
+IMPROVEMENTS:
+  * add generic monitor resource with support for reading changes.
+
 ## 0.0.5 (unreleased)
 IMPROVEMENTS:
   * add support for warning and critical values per monitor
