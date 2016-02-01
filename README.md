@@ -5,11 +5,14 @@ status](https://travis-ci.org/ojongerius/terraform-provider-datadog.svg)](https:
 
 A [Terraform](https://github.com/hashicorp/terraform) plugin that provides resources for [Datadog](https://www.datadoghq.com/).
 
-It currently supports 3 resources based on the Datadog monitor originally contributed by [Vincenzo Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio).
+It currently supports 4 resources based on the Datadog monitor originally contributed by [Vincenzo Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio).
 
-* *Service Checks*: datadog_service_check
-* *Metric Alerts*: datadog_metric_alert
-* *Outlier Alerts*: datadog_outlier_alert, see [introducing-outlier-detection-in-datadog](https://www.datadoghq.com/blog/introducing-outlier-detection-in-datadog/).
+* *Datadog Monitors*: datadog_monitor, this monitor supports service checks, metric, outlier and event alerts.
+
+
+* *Service Checks*: datadog_service_check. Does not detect upstream changes, and will be removed.
+* *Metric Alerts*: datadog_metric_alert. Does not detect upstream changes, and will be removed.
+* *Outlier Alerts*: datadog_outlier_alert, see [introducing-outlier-detection-in-datadog](https://www.datadoghq.com/blog/introducing-outlier-detection-in-datadog/). Does not detect upstream changes, and will be removed.
 
 Feel free to open new [issues](https://github.com/ojongerius/terraform-provider-datadog/issues) for extra resources or bugs you find.
 
@@ -21,17 +24,51 @@ https://github.com/ojongerius/terraform-provider-datadog/issues).
 Download builds for Darwin, Linux and Windows from the [releases page](https://github.com/ojongerius/terraform-provider-datadog/releases/). Pre-release is rebuild on each merge to master.
 
 ## Resources
-### Service Checks
-
-This plugin will create a monitor, but not a service check. By default it will
-monitor reports from all hosts that run a given service check.
+### Monitor
+This plugin will create a monitor. By default it will monitor reports from all hosts or other sources that run a given check or report a certain metric.
 
 The flow would be:
 
-* Run service checks on host(s)
-* Create monitors for those service checks using this plugin
+* Run service checks, or report metrics from host(s)
+* Create monitors for these using this plugin
 
 Filter which hosts / groups are monitored by using [tags](http://docs.datadoghq.com/guides/tagging/).
+
+Example configuration:
+
+``` HCL
+
+resource "datadog_monitor" "foo" {
+  name = "name for monitor foo"
+  type = "metric alert" // Alternatives: "service check", "event alert" or "query alert" (undocumented, outlier alert)
+  message = "A message Notify: @hipchat-channel"
+  escalation_message = "An escalation message @pagerduty"
+
+  query = "avg(last_1h):avg:aws.ec2.cpu{environment:foo,host:bar} by {host} > 3"
+
+  thresholds {
+	ok = 0
+	warning = 1
+	critical = 3
+  }
+
+  notify_no_data = true
+  renotify_interval = 40
+  notify_audit = true
+  timeout_h = 70
+  include_tags = false
+  silenced {
+	"*" = 0
+  }
+
+```
+
+### Service Checks
+
+*Deprecated, this check does not update state, use the generic monitor alert.*
+
+This plugin will create a monitor, but not a service check. By default it will
+monitor reports from all hosts that run a given service check.
 
 Example configuration:
 
@@ -59,6 +96,8 @@ EOF
 ```
 
 ### Metric Alerts
+
+*Deprecated, this check does not update state, use the generic monitor alert.*
 
 Example configuration:
 
@@ -94,6 +133,8 @@ EOF
 ```
 
 ### Outlier Alerts
+
+*Deprecated, this check does not update state, use the generic monitor alert.*
 
 Example configuration:
 
