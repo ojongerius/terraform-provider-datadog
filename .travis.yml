@@ -5,14 +5,10 @@ go:
 env:
   - "PATH=/home/travis/gopath/bin:$PATH"
 
-install:
-  - make updatedeps
-
 script:
   - go get -u github.com/golang/lint/golint
   - golint ./...
   - make test
-  - test `gofmt -l . | wc -l` = 0
 
 before_install:
   - go get github.com/mitchellh/gox
