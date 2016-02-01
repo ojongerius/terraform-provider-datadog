@@ -76,10 +76,8 @@ func TestAccDatadogMonitor_Updated(t *testing.T) {
 						"datadog_monitor.foo", "notify_audit", "false"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "timeout_h", "60"),
-					/*
-						resource.TestCheckResourceAttr(
-							"datadog_monitor.foo", "include_tags", "true"),
-					*/
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "include_tags", "true"),
 				),
 			},
 			resource.TestStep{
@@ -110,10 +108,8 @@ func TestAccDatadogMonitor_Updated(t *testing.T) {
 						"datadog_monitor.foo", "notify_audit", "true"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "timeout_h", "70"),
-					/*
-						resource.TestCheckResourceAttr(
-							"datadog_monitor.foo", "include_tags", "false"),
-					*/
+					resource.TestCheckResourceAttr(
+						"datadog_monitor.foo", "include_tags", "false"),
 					resource.TestCheckResourceAttr(
 						"datadog_monitor.foo", "silenced.*", "0"),
 				),
@@ -161,7 +157,7 @@ resource "datadog_monitor" "foo" {
 
   notify_audit = false
   timeout_h = 60
-  //include_tags = true
+  include_tags = true
 }
 `
 
@@ -185,7 +181,7 @@ resource "datadog_monitor" "foo" {
   escalation_message = "the situation has escalated! @pagerduty"
   notify_audit = true
   timeout_h = 70
-  //include_tags = false
+  include_tags = false
   // TODO add tags test
   silenced {
 	"*" = 0
