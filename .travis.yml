@@ -2,21 +2,20 @@ language: go
 go:
   - 1.5
 
+install:
+      - echo noop
+
 env:
   - "PATH=/home/travis/gopath/bin:$PATH"
 
-install:
-  - make updatedeps
+before_install:
+  - go get github.com/mitchellh/gox
+  - go get github.com/tcnksm/ghr
 
 script:
   - go get -u github.com/golang/lint/golint
   - golint ./...
   - make test
-  - test `gofmt -l . | wc -l` = 0
-
-before_install:
-  - go get github.com/mitchellh/gox
-  - go get github.com/tcnksm/ghr
 
 after_success:
   - make ci
