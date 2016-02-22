@@ -3,6 +3,8 @@ status](https://travis-ci.org/ojongerius/terraform-provider-datadog.svg)](https:
 
 # terraform-provider-datadog
 
+```This provider has been merged in Terraform master, it will be available in 0.6.12 and will no longer be maintained```
+
 A [Terraform](https://github.com/hashicorp/terraform) plugin that provides resources for [Datadog](https://www.datadoghq.com/).
 
 It currently supports 4 resources based on the Datadog monitor originally contributed by [Vincenzo Prignano](https://github.com/vinceprignano) of [Segmentio](https://github.com/segmentio).
