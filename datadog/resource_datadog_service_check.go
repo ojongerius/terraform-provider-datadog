@@ -19,13 +19,22 @@ func resourceDatadogServiceCheck() *schema.Resource {
 		Exists: resourceDatadogGenericExists,
 
 		Schema: map[string]*schema.Schema{
-			"name": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-			},
+			// Specific
 			"check": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			/*
+						"check".over(tags).last(count).count_by_status()
+							* check name of the check, e.g. datadog.agent.up
+							* tags one or more quoted tags (comma-separated), or "*". e.g.: .over("env:prod", "role:db")
+							* count must be at >= your max threshold (defined in the options). e.g. if you want to notify on 1 critical, 3 ok and 2 warn statuses count should be 3.
+			*/
+
+			// Common
+			"name": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
 			},
 
 			"thresholds": thresholdSchema(),

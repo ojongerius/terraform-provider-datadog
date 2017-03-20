@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/zorkian/go-datadog-api"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -97,12 +98,88 @@ func resourceDatadogGenericExists(d *schema.ResourceData, meta interface{}) (b b
 }
 
 func resourceDatadogGenericRead(d *schema.ResourceData, meta interface{}) error {
-	// TODO: Add support for read function.
-	/* Read - This is called to resync the local state with the remote state.
-	Terraform guarantees that an existing ID will be set. This ID should be
-	used to look up the resource. Any remote data should be updated into the
-	local data. No changes to the remote resource are to be made.
-	*/
+
+	client := meta.(*datadog.Client)
+
+	i, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return err
+	}
+
+	r, err := client.GetMonitor(i)
+	if err != nil {
+		if strings.EqualFold(err.Error(), "API error 404 Not Found: {\"errors\":[\"Monitor not found\"]}") {
+			return err
+		}
+		return err
+	}
+
+	// TODO: seriously consider how useful having a separate parser is after this resource has been simplified.
+	m, err := resourceDatadogQueryParser(d, r)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[DEBUG] XX monitor: %v", m)
+	if m.Name != "" {
+		d.Set("name", m.Name)
+	}
+	if m.Message != "" {
+		d.Set("message", m.Message)
+	}
+	if m.TimeAggregate != "" {
+		d.Set("time_aggr", m.TimeAggregate)
+	}
+	if m.TimeWindow != "" {
+		d.Set("time_windows", m.TimeWindow)
+	}
+	if m.SpaceAggregate != "" {
+		d.Set("space_aggr", m.SpaceAggregate)
+	}
+	if m.Metric != "" {
+		d.Set("metric", m.Metric)
+	}
+
+	if m.Operator != "" {
+		d.Set("operator", m.Operator)
+	}
+
+	if m.Algorithm != "" {
+		d.Set("algorithm", m.Algorithm)
+	}
+
+	if m.Check != "" {
+		d.Set("check", m.Check)
+	}
+
+	// TODO: Double check this one
+	if m.NotifyNoData != d.Get("notify_no_data") {
+		d.Set("notify_no_data", m.NotifyNoData)
+	}
+
+	// TODO: Double check this one
+	if m.NoDataTimeFrame != d.Get("no_data_timeframe") {
+		d.Set("no_data_timeframe", m.NoDataTimeFrame)
+	}
+
+	if m.ReNotifyInterval != "" {
+		d.Set("renotify_interval", m.ReNotifyInterval)
+	}
+
+	// TODO: test if these are not empty
+	if len(m.Tags) > 0 {
+		log.Printf("[DEBUG] XX tags were found, setting state for diff")
+		d.Set("tags", m.Tags)
+	}
+
+	if len(m.Keys) > 0 {
+		log.Printf("[DEBUG] XX keys were found, setting state for diff")
+		d.Set("keys", m.Keys)
+	}
+
+	if m.Threshold != "" {
+		d.Set("threshold", m.Threshold)
+	}
 
 	return nil
 }
